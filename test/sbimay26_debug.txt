@@ -1,0 +1,236 @@
+Pages: 3
+
+===== PAGE 1 (1295 chars) =====
+
+
+
+Balance
+Rs.2294.4
+TransactionAccounts
+TransactionDetails
+
+Summary
+XXXXXXX5657
+Customer
+Welcome
+Mr. KRISHAN SINGHSHEKHAWAT
+As on 31-05-26
+MY INFORMATION
+My Address
+Email ID
+Segment
+MobileNumber
+MY HOME BRANCH INFORMATION
+Home Branch
+Branch EmailID
+BranchCode
+Branch PhoneNumber
+krXXXXXXXXXXXXXX@gmail.com
+QTR NO.E/14/1,TYPE VI(H), E H ROAD,,RANGE HILLSESTATE,,KHADKI,Pune,MAHARASHTRA-411020.
+93XXXXXX70
+SILVER
+BOMBAY ENGG GROUPKHADKI PUNE
+09063
+sbi.09063@sbi.co.in
+-7030032120
+
+
+
+
+
+
+
+
+PLEASE DO NOT SHARE YOUR ATM, DEBIT/CREDIT CARD NUMBER, PIN AND OTP WITH ANYONE ELSE. BANK NEVER ASKS FOR SUCH INFORMATION.
+My Name
+Mr. KRISHAN SINGH SHEKHAWAT
+
+
+BHXXXXX91C
+PAN
+
+KYC Status
+Compliant
+Toll FreeNumber
+1800 11 22111800 1234
+
+Available Balance
+No. of Accounts
+Currency
+Deposit Accounts
+MY ACCOUNTS
+Secondary
+Primary
+SAVING ACCOUNT
+INR
+1
+0
+2294.44
+Transaction Accounts*
+Total
+INR: Rs. 2294.44
+*Each depositor is insured by the Deposit Insurance and Credit Guarantee Corporation(DICGC) upto the maximum of Rs. 5 Lakh, for both principal and interest amount held by him in the same right andsame capacity.
+
+Visit
+https://sbi.co.in
+Customer Care
+1800 1234
+Customer Care
+customercare@sbi.co.in
+1
+ of 3
+Number
+:
+Email
+:
+
+
+===== PAGE 2 (620 chars) =====
+
+
+
+Balance
+Rs.2294.4
+TransactionAccounts
+TransactionDetails
+
+Summary
+XXXXXXX5657
+Customer
+Welcome
+Mr. KRISHAN SINGHSHEKHAWAT
+As on 31-05-26
+TRANSACTION ACCOUNTS
+HoldingStatus
+Mode Of Operation
+Account Number
+Account Status
+Currency
+Current Balance
+Lien/Hold Amount
+MOD** Balance
+Available Balance
+P
+SINGLE
+XXXXXXX7785
+OPEN
+INR
+2294.44
+0.00
+0.00
+2294.44
+SAVINGS ACCOUNTS
+** P  Primary Account Holder
+**MOD: Multi Option Deposit
+**S  Secondary Account Holder
+
+Visit
+https://sbi.co.in
+Customer Care
+1800 1234
+Customer Care
+customercare@sbi.co.in
+2
+ of 3
+Number
+:
+Email
+:
+
+
+===== PAGE 3 (1236 chars) =====
+
+
+
+
+
+Balance
+Rs.2294.4
+TransactionAccounts
+TransactionDetails
+
+Summary
+XXXXXXX5657
+Customer
+Welcome
+Mr. KRISHAN SINGHSHEKHAWAT
+As on 31-05-26
+TRANSACTION DETAILS
+SAVING ACCOUNT
+XXXXXXX7785
+Nominee Registered
+No
+Available Balance
+2294.44
+Multi-Option Deposit Balance
+0.00
+Name of the Account Holder
+Mr. KRISHAN SINGH SHEKHAWAT
+QTR NO.E/14/1,TYPE VI(H), E H ROAD,,RANGE HILLSESTATE,,KHADKI,Pune,MAHARASHTRA-411020.
+Address
+SINGLE
+Mode of Operation
+Branch Name
+BOMBAY ENGG GROUP KHADKI  PUNE
+09063
+Branch Code
+MICR Code
+411002023
+SBIN0009063
+IFSC Code
+Date
+Transaction Reference
+Ref.No./Chq.No.
+Credit
+Debit
+Balance
+null
+null
+null
+null
+null
+null
+08-05-26
+PMSBY RENEWAL SBISB09063261270012427848
+-
+0
+20.00
+2730.44
+08-05-26
+PMJJBY RENEWAL SBIJB09063261270020727186
+-
+0
+436.00
+2294.44
+*All dates are in DD-MM-YY format
+TRANSACTION OVERVIEW
+Your Opening Balance on 01-05-26:
+2750.44
+
+Your Closing Balance on 31-05-26:
+2294.44
+
+Contents of this statement will be considered correct if no error is reported within 30 days of receipt of the statement.
+Visit
+https://sbi.co.in
+Customer Care
+1800 1234
+Customer Care
+customercare@sbi.co.in
+3
+ of 3
+Number
+:
+Email
+:
+
+
+===== PARSE SUMMARY =====
+Bank: BankId.sbi
+Rows: 3
+Transactions: 2
+[Date, Description, Debit, Credit, Balance]
+[08-05-26, PMSBY RENEWAL SBISB09063261270012427848, 20.00, , 2730.44]
+[08-05-26, PMJJBY RENEWAL SBIJB09063261270020727186, 436.00, , 2294.44]
+2026-05-08 | PMSBY RENEWAL SBISB09063261270012427848 | debit=true | 20.0
+2026-05-08 | PMJJBY RENEWAL SBIJB09063261270020727186 | debit=true | 436.0

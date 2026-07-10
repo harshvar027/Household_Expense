@@ -1,0 +1,6 @@
+# Copy to android/admob.properties before Play Store upload.
+# Get IDs from https://admob.google.com → Apps → Household Expense
+appId=ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY
+
+# Also update lib/config/ad_config.dart banner unit IDs:
+# androidBannerId=ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ
