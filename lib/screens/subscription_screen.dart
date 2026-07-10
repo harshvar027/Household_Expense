@@ -7,6 +7,8 @@ import '../services/subscription_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ui/glass_surface.dart';
 import '../widgets/ui/app_scaffold.dart';
+import '../widgets/ui/app_logo.dart';
+import '../widgets/ui/mesh_background.dart';
 
 /// Plan selection and purchase screen.
 class SubscriptionScreen extends StatefulWidget {
@@ -100,9 +102,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           title: Text(widget.blocking ? 'Purchase required' : 'Your plan'),
           automaticallyImplyLeading: canDismiss,
         ),
-        body: ListView(
+        body: MeshBackground(
+          child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
           children: [
+            const Center(child: AppLogo(size: 96)),
+            const SizedBox(height: 16),
             if (!_status.canUseApp)
               GlassSurface.card(
                 padding: const EdgeInsets.all(16),
@@ -180,6 +185,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             ],
           ],
         ),
+        ),
       ),
     );
   }
@@ -212,17 +218,17 @@ class _PlanCard extends StatelessWidget {
         ? AppColors.primary
         : highlight
             ? AppColors.income.withValues(alpha: 0.4)
-            : Colors.black.withValues(alpha: 0.06);
+            : AppColors.accent.withValues(alpha: 0.14);
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card,
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: borderColor, width: selected ? 2 : 1),
         boxShadow: [
           if (highlight)
             BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.08),
+              color: AppColors.primary.withValues(alpha: 0.18),
               blurRadius: 16,
               offset: const Offset(0, 6),
             ),
@@ -239,6 +245,7 @@ class _PlanCard extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
                 ),
               ),
               const Spacer(),
@@ -246,7 +253,7 @@ class _PlanCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.12),
+                    color: AppColors.primary.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -254,7 +261,7 @@ class _PlanCard extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.primary,
+                      color: AppColors.primaryLight,
                     ),
                   ),
                 ),
@@ -270,6 +277,7 @@ class _PlanCard extends StatelessWidget {
                   fontSize: 28,
                   fontWeight: FontWeight.w800,
                   letterSpacing: -0.5,
+                  color: AppColors.textPrimary,
                 ),
               ),
               const SizedBox(width: 8),
@@ -295,7 +303,15 @@ class _PlanCard extends StatelessWidget {
                     color: AppColors.income.withValues(alpha: 0.9),
                   ),
                   const SizedBox(width: 8),
-                  Expanded(child: Text(f, style: const TextStyle(fontSize: 13))),
+                  Expanded(
+                    child: Text(
+                      f,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),

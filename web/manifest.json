@@ -1,11 +1,11 @@
 {
-    "name": "household_expense",
-    "short_name": "household_expense",
+    "name": "Household Expense",
+    "short_name": "Expense Tracker",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#000000",
+    "theme_color": "#0B1F3A",
+    "description": "Secure on-device household expense tracker with budgets, imports, and analytics.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

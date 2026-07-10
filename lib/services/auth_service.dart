@@ -9,11 +9,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../config/dev_auth_config.dart';
 import '../database/database_helper.dart';
 import '../models/app_region.dart';
+import '../models/app_user_record.dart';
 import '../models/household_member.dart';
 import '../models/registration_guard.dart';
 import '../models/user_profile.dart';
 import '../utils/auth_validators.dart';
 import 'app_locale_service.dart';
+import 'auth_credential_store.dart';
 import 'device_enrollment_service.dart';
 import 'entitlement_service.dart';
 
@@ -32,13 +34,29 @@ class AuthService {
   static const _biometricEnabledKey = 'user_biometric_enabled_v1';
   static const _securePinHashKey = 'secure_user_pin_hash_v1';
   static const _securePasswordHashKey = 'secure_user_password_hash_v1';
+  static const _migratedToDbKey = 'auth_migrated_to_db_v1';
 
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+
+  AuthCredentialStore _store = DatabaseAuthCredentialStore();
+  bool _migrationChecked = false;
 
   /// Nested counter so nested file pickers / share sheets don't unlock early.
   int _backgroundLockSuppressCount = 0;
 
   bool get isBackgroundLockSuppressed => _backgroundLockSuppressCount > 0;
+
+  /// Test-only: swap the credential store (in-memory) and reset migration flag.
+  @visibleForTesting
+  void debugUseStore(AuthCredentialStore store) {
+    _store = store;
+    _migrationChecked = false;
+  }
+
+  @visibleForTesting
+  void debugResetMigrationFlag() {
+    _migrationChecked = false;
+  }
 
   /// Call around native UI that pauses the Flutter activity (file picker, etc.).
   void beginBackgroundLockSuppress() => _backgroundLockSuppressCount++;
@@ -50,10 +68,6 @@ class AuthService {
   }
 
   /// Keeps the session alive while native share sheets / file pickers pause the app.
-  ///
-  /// External intents (email composer, share sheet, file picker) can return before
-  /// the activity fully backgrounds or resumes, so we track lifecycle transitions
-  /// for the whole guarded window and only end suppression after the app is back.
   Future<T> runWithNativeSheetGuard<T>(Future<T> Function() action) async {
     beginBackgroundLockSuppress();
     final tracker = _NativeSheetLifecycleTracker();
@@ -83,9 +97,30 @@ class AuthService {
     await prefs.setBool(_loggedInKey, true);
   }
 
-  Future<bool> hasProfile() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.containsKey(_profileKey);
+  /// Ensures legacy prefs/secure credentials are copied into the database once.
+  Future<void> ensureAuthReady() async {
+    if (_migrationChecked) return;
+    await _migrateLegacyCredentialsToDbIfNeeded();
+    _migrationChecked = true;
+  }
+
+  /// True when the encrypted database already has a household account.
+  Future<bool> hasAccount() async {
+    await ensureAuthReady();
+    return _store.hasUser();
+  }
+
+  Future<bool> hasProfile() async => hasAccount();
+
+  /// True when a PIN/password hash exists (DB first, then secure storage).
+  Future<bool> hasUnlockCredential() async {
+    await ensureAuthReady();
+    final user = await _store.readUser();
+    if (user != null && user.secretHash.isNotEmpty) return true;
+    final pin = await _readSecretHash(AuthLockMethod.pin);
+    if (pin != null && pin.isNotEmpty) return true;
+    final password = await _readSecretHash(AuthLockMethod.password);
+    return password != null && password.isNotEmpty;
   }
 
   Future<bool> isLoggedIn() async {
@@ -94,22 +129,51 @@ class AuthService {
   }
 
   Future<AuthLockMethod> getAuthLockMethod() async {
+    await ensureAuthReady();
+    final user = await _store.readUser();
+    if (user != null) {
+      return user.authMethod == 'password'
+          ? AuthLockMethod.password
+          : AuthLockMethod.pin;
+    }
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_authMethodKey);
     return raw == 'password' ? AuthLockMethod.password : AuthLockMethod.pin;
   }
 
   Future<bool> isBiometricEnabled() async {
+    await ensureAuthReady();
+    final user = await _store.readUser();
+    if (user != null) return user.biometricEnabled;
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_biometricEnabledKey) ?? false;
   }
 
   Future<void> setBiometricEnabled(bool enabled) async {
+    await ensureAuthReady();
+    final user = await _store.readUser();
+    if (user != null) {
+      await _store.upsertUser(
+        user.copyWith(
+          biometricEnabled: enabled,
+          updatedAt: DateTime.now().toIso8601String(),
+        ),
+      );
+    }
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_biometricEnabledKey, enabled);
   }
 
   Future<UserProfile?> getProfile() async {
+    await ensureAuthReady();
+    final user = await _store.readUser();
+    if (user != null) {
+      final profile = user.toProfile();
+      AppLocaleService.instance.applyProfile(profile);
+      await _mirrorProfilePrefs(profile);
+      return profile;
+    }
+
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_profileKey);
     if (raw == null) return null;
@@ -118,11 +182,18 @@ class AuthService {
     return profile;
   }
 
+  Future<AppUserRecord?> getAccountRecord() async {
+    await ensureAuthReady();
+    return _store.readUser();
+  }
+
   Future<void> register({
     required UserProfile profile,
     required String pin,
   }) async {
-    if (DevAuthConfig.canBypassRegistrationGuard && await hasProfile()) {
+    await ensureAuthReady();
+
+    if (DevAuthConfig.canBypassRegistrationGuard && await hasAccount()) {
       await clearProfile();
     }
 
@@ -135,18 +206,27 @@ class AuthService {
       throw AuthException(check.message);
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_profileKey, jsonEncode(profile.toJson()));
-    AppLocaleService.instance.applyProfile(profile);
-    await _writeSecretHashes(
-      pinHash: _hashSecret(pin),
-      passwordHash: null,
+    final secretHash = hashSecret(pin);
+    final record = AppUserRecord.fromProfile(
+      profile: profile,
+      secretHash: secretHash,
+      authMethod: 'pin',
+      biometricEnabled: false,
     );
+
+    await _store.upsertUser(record);
+    await _mirrorProfilePrefs(profile);
+    await _writeSecretHashes(pinHash: secretHash, passwordHash: null);
+
+    final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_pinHashKey);
     await prefs.remove(_passwordHashKey);
     await prefs.setString(_authMethodKey, 'pin');
     await prefs.setBool(_biometricEnabledKey, false);
     await prefs.setBool(_loggedInKey, true);
+    await prefs.setBool(_migratedToDbKey, true);
+
+    AppLocaleService.instance.applyProfile(profile);
 
     final activeRegion = AppRegion.fromStorage(profile.region);
     final enrollment = await DeviceEnrollmentService.instance.read();
@@ -168,35 +248,33 @@ class AuthService {
       region: activeRegion,
       registrationDate: registrationDate,
     );
-    await _syncHouseholdMember(profile.name);
-    await DatabaseHelper.instance.setupInitialAccountFromRegistration(profile);
+    if (_store is DatabaseAuthCredentialStore) {
+      await _syncHouseholdMember(profile.name);
+      await DatabaseHelper.instance.setupInitialAccountFromRegistration(profile);
+    }
   }
 
-  /// Unlock with PIN or password (local device — no identifier needed).
+  /// Unlock with PIN/password only (legacy). Prefer [login] with identifier.
   Future<bool> unlockWithSecret(String secret) async {
     if (!await _verifySecret(secret)) return false;
     await unlockSession();
     return true;
   }
 
+  /// Authorize against the database: email/username + PIN/password.
   Future<bool> login({
     required String identifier,
     required String secret,
   }) async {
-    final profile = await getProfile();
-    if (profile == null) return false;
+    await ensureAuthReady();
+    final user = await _store.readUser();
+    if (user == null) return false;
 
-    final normalizedId = AuthValidators.normalizePhone(
-      identifier,
-      region: AppRegion.fromStorage(profile.region),
-    );
-    final matchesEmail =
-        profile.email.toLowerCase() == identifier.trim().toLowerCase();
-    final matchesPhone = profile.phone == normalizedId;
+    if (!identifierMatchesAccount(user, identifier)) return false;
+    if (!secretsMatch(user.secretHash, secret)) return false;
 
-    if (!matchesEmail && !matchesPhone) return false;
-    if (!await _verifySecret(secret)) return false;
-
+    await _mirrorProfilePrefs(user.toProfile());
+    AppLocaleService.instance.applyProfile(user.toProfile());
     await unlockSession();
     return true;
   }
@@ -211,8 +289,21 @@ class AuthService {
       throw AuthException('Current PIN or password is incorrect');
     }
 
+    final hash = hashSecret(newPin);
+    await ensureAuthReady();
+    final user = await _store.readUser();
+    if (user != null) {
+      await _store.upsertUser(
+        user.copyWith(
+          authMethod: 'pin',
+          secretHash: hash,
+          updatedAt: DateTime.now().toIso8601String(),
+        ),
+      );
+    }
+
     final prefs = await SharedPreferences.getInstance();
-    await _writeSecretHashes(pinHash: _hashSecret(newPin));
+    await _writeSecretHashes(pinHash: hash);
     await prefs.setString(_authMethodKey, 'pin');
   }
 
@@ -224,8 +315,21 @@ class AuthService {
       throw AuthException('Current PIN or password is incorrect');
     }
 
+    final hash = hashSecret(newPassword);
+    await ensureAuthReady();
+    final user = await _store.readUser();
+    if (user != null) {
+      await _store.upsertUser(
+        user.copyWith(
+          authMethod: 'password',
+          secretHash: hash,
+          updatedAt: DateTime.now().toIso8601String(),
+        ),
+      );
+    }
+
     final prefs = await SharedPreferences.getInstance();
-    await _writeSecretHashes(passwordHash: _hashSecret(newPassword));
+    await _writeSecretHashes(passwordHash: hash);
     await prefs.setString(_authMethodKey, 'password');
   }
 
@@ -240,7 +344,6 @@ class AuthService {
     await endSession();
   }
 
-  /// Verifies email + phone against the profile stored on this device.
   bool identityMatches(
     UserProfile profile,
     String email,
@@ -254,7 +357,28 @@ class AuthService {
         profile.phone == normalizedPhone;
   }
 
-  /// Blocks duplicate accounts on one device; also catches re-register with same identity.
+  /// Email, phone, or full name may unlock the local account.
+  static bool identifierMatchesAccount(AppUserRecord user, String identifier) {
+    final raw = identifier.trim();
+    if (raw.isEmpty) return false;
+
+    final lower = raw.toLowerCase();
+    if (user.email.trim().toLowerCase() == lower) return true;
+    if (user.name.trim().toLowerCase() == lower) return true;
+
+    final region = AppRegion.fromStorage(user.region);
+    final normalizedId = AuthValidators.normalizePhone(raw, region: region);
+    if (normalizedId.isNotEmpty && user.phone == normalizedId) return true;
+
+    return false;
+  }
+
+  static bool secretsMatch(String storedHash, String secret) =>
+      storedHash == hashSecret(secret);
+
+  static String hashSecret(String value) =>
+      base64Url.encode(utf8.encode('household_expense_pin_$value'));
+
   Future<RegistrationCheck> checkRegistrationAllowed({
     String? email,
     String? phone,
@@ -264,8 +388,10 @@ class AuthService {
       return const RegistrationCheck(reason: RegistrationBlockReason.allowed);
     }
 
-    final profile = await getProfile();
-    if (profile != null) {
+    await ensureAuthReady();
+    final user = await _store.readUser();
+    if (user != null) {
+      final profile = user.toProfile();
       final maskedEmail = _maskEmail(profile.email);
       final maskedPhone = _maskPhone(profile.phone);
 
@@ -313,37 +439,49 @@ class AuthService {
     );
   }
 
-  /// Resets PIN or password after local identity check (no SMS/email — free).
   Future<void> resetLockAfterIdentityCheck({
     required String email,
     required String phone,
     required String newSecret,
     AuthLockMethod method = AuthLockMethod.pin,
   }) async {
-    final profile = await getProfile();
-    if (profile == null) {
+    await ensureAuthReady();
+    final user = await _store.readUser();
+    if (user == null) {
       throw const AuthException('No account found on this device');
     }
 
+    final profile = user.toProfile();
     if (!identityMatches(profile, email, phone)) {
       throw const AuthException(
         'Email and mobile number do not match the account on this device',
       );
     }
 
+    final hash = hashSecret(newSecret);
     final prefs = await SharedPreferences.getInstance();
     if (method == AuthLockMethod.password) {
-      await _writeSecretHashes(
-        pinHash: null,
-        passwordHash: _hashSecret(newSecret),
+      await _store.upsertUser(
+        user.copyWith(
+          authMethod: 'password',
+          secretHash: hash,
+          biometricEnabled: false,
+          updatedAt: DateTime.now().toIso8601String(),
+        ),
       );
+      await _writeSecretHashes(pinHash: null, passwordHash: hash);
       await prefs.remove(_pinHashKey);
       await prefs.setString(_authMethodKey, 'password');
     } else {
-      await _writeSecretHashes(
-        pinHash: _hashSecret(newSecret),
-        passwordHash: null,
+      await _store.upsertUser(
+        user.copyWith(
+          authMethod: 'pin',
+          secretHash: hash,
+          biometricEnabled: false,
+          updatedAt: DateTime.now().toIso8601String(),
+        ),
       );
+      await _writeSecretHashes(pinHash: hash, passwordHash: null);
       await prefs.remove(_passwordHashKey);
       await prefs.setString(_authMethodKey, 'pin');
     }
@@ -366,13 +504,32 @@ class AuthService {
   }
 
   Future<void> updateProfile(UserProfile profile) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_profileKey, jsonEncode(profile.toJson()));
+    await ensureAuthReady();
+    final user = await _store.readUser();
+    if (user != null) {
+      await _store.upsertUser(
+        user.copyWith(
+          name: profile.name,
+          email: profile.email,
+          phone: profile.phone,
+          householdName: profile.householdName,
+          region: profile.region,
+          currency: profile.currency,
+          primaryBankId: profile.primaryBankId,
+          updatedAt: DateTime.now().toIso8601String(),
+        ),
+      );
+    }
+    await _mirrorProfilePrefs(profile);
     AppLocaleService.instance.applyProfile(profile);
-    await _syncHouseholdMember(profile.name);
+    if (_store is DatabaseAuthCredentialStore) {
+      await _syncHouseholdMember(profile.name);
+    }
   }
 
   Future<void> clearProfile() async {
+    await ensureAuthReady();
+    await _store.deleteUser();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_profileKey);
     await prefs.remove(_pinHashKey);
@@ -381,10 +538,11 @@ class AuthService {
     await _secureDelete(_securePasswordHashKey);
     await prefs.remove(_authMethodKey);
     await prefs.remove(_biometricEnabledKey);
+    await prefs.remove(_migratedToDbKey);
     await prefs.setBool(_loggedInKey, false);
+    _migrationChecked = false;
   }
 
-  /// Debug/testing only — clears local auth so a new profile can be registered.
   Future<void> prepareForTestRegistration() async {
     if (!DevAuthConfig.canBypassRegistrationGuard) {
       throw const AuthException(
@@ -395,11 +553,49 @@ class AuthService {
     await DeviceEnrollmentService.instance.clear();
   }
 
+  Future<void> _migrateLegacyCredentialsToDbIfNeeded() async {
+    if (await _store.hasUser()) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_migratedToDbKey, true);
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_profileKey);
+    if (raw == null) return;
+
+    final profile = UserProfile.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    final method = prefs.getString(_authMethodKey) == 'password'
+        ? AuthLockMethod.password
+        : AuthLockMethod.pin;
+    final hash = await _readSecretHash(method);
+    if (hash == null || hash.isEmpty) return;
+
+    final record = AppUserRecord.fromProfile(
+      profile: profile,
+      secretHash: hash,
+      authMethod: method == AuthLockMethod.password ? 'password' : 'pin',
+      biometricEnabled: prefs.getBool(_biometricEnabledKey) ?? false,
+    );
+    await _store.upsertUser(record);
+    await prefs.setBool(_migratedToDbKey, true);
+  }
+
+  Future<void> _mirrorProfilePrefs(UserProfile profile) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_profileKey, jsonEncode(profile.toJson()));
+  }
+
   Future<bool> _verifySecret(String secret) async {
+    await ensureAuthReady();
+    final user = await _store.readUser();
+    if (user != null && user.secretHash.isNotEmpty) {
+      return secretsMatch(user.secretHash, secret);
+    }
     final method = await getAuthLockMethod();
     final hash = await _readSecretHash(method);
     if (hash == null) return false;
-    return hash == _hashSecret(secret);
+    return secretsMatch(hash, secret);
   }
 
   Future<String?> _readSecretHash(AuthLockMethod method) async {
@@ -469,9 +665,6 @@ class AuthService {
     }
   }
 
-  String _hashSecret(String value) =>
-      base64Url.encode(utf8.encode('household_expense_pin_$value'));
-
   Future<void> _syncHouseholdMember(String name) async {
     final db = DatabaseHelper.instance;
     final members = await db.getMembers();
@@ -515,7 +708,6 @@ class _NativeSheetLifecycleTracker with WidgetsBindingObserver {
   }
 
   Future<void> waitForForegroundCycleIfNeeded() async {
-    // Let the platform deliver pause/resume events for launched intents.
     await Future<void>.delayed(Duration.zero);
     await WidgetsBinding.instance.endOfFrame;
 

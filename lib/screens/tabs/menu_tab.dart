@@ -6,7 +6,7 @@ import '../../services/entitlement_service.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/neo_palette.dart';
 import '../../widgets/feature_tile.dart';
-import '../../widgets/ui/finance_illustration.dart';
+import '../../widgets/ui/app_logo.dart';
 import '../../widgets/ui/glass_surface.dart';
 import '../../widgets/ui/glass_icon_bubble.dart';
 import '../../widgets/ui/stagger_animate.dart';
@@ -271,12 +271,13 @@ class _HeroBanner extends StatelessWidget {
               ],
             ),
           ),
-          const FinanceIllustration(
-            type: FinanceIllustrationType.chart,
-            size: 88,
-          )
+          const AppLogo(size: 72, showShadow: false)
               .animate(onPlay: (c) => c.repeat(reverse: true))
-              .rotate(begin: -0.02, end: 0.02, duration: 3.seconds),
+              .scale(
+                begin: const Offset(0.96, 0.96),
+                end: const Offset(1.04, 1.04),
+                duration: 3.seconds,
+              ),
         ],
       ),
     );

@@ -8,7 +8,6 @@ import '../services/category_detector.dart';
 import '../services/import_service.dart';
 import '../services/merchant_rule_service.dart';
 import '../database/database_helper.dart';
-import '../models/account.dart';
 import '../theme/app_theme.dart';
 import '../utils/category_utils.dart';
 import '../widgets/ui/app_scaffold.dart';
@@ -482,7 +481,11 @@ class _ImportPreviewScreenState extends State<ImportPreviewScreen> {
                   ],
                 ),
               ),
-              Container(width: 1, height: 36, color: Colors.black.withValues(alpha: 0.06)),
+              Container(
+                width: 1,
+                height: 36,
+                color: AppColors.accent.withValues(alpha: 0.12),
+              ),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.only(left: 12),
@@ -507,7 +510,7 @@ class _ImportPreviewScreenState extends State<ImportPreviewScreen> {
           ),
           if (selectedInvestmentCount > 0) ...[
             const SizedBox(height: 12),
-            Divider(color: Colors.black.withValues(alpha: 0.06), height: 1),
+            Divider(color: AppColors.accent.withValues(alpha: 0.12), height: 1),
             const SizedBox(height: 12),
             Row(
               children: [
@@ -615,11 +618,19 @@ class _ImportPreviewScreenState extends State<ImportPreviewScreen> {
         FilterChip(
           label: Text(
             hideDuplicates ? 'New only' : 'Hide duplicates',
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+              color: hideDuplicates
+                  ? AppColors.primaryLight
+                  : AppColors.textPrimary,
+            ),
           ),
           selected: hideDuplicates,
-          selectedColor: AppColors.primary.withValues(alpha: 0.15),
-          checkmarkColor: AppColors.primary,
+          backgroundColor: AppColors.surfaceElevated,
+          selectedColor: AppColors.primary.withValues(alpha: 0.22),
+          side: BorderSide(color: AppColors.accent.withValues(alpha: 0.18)),
+          checkmarkColor: AppColors.primaryLight,
           onSelected: (v) => setState(() => hideDuplicates = v),
         ),
       ],
@@ -659,9 +670,8 @@ class _ChipButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
-      elevation: 1,
-      shadowColor: AppColors.primary.withValues(alpha: 0.2),
+      color: AppColors.card,
+      elevation: 0,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: onTap,
@@ -746,7 +756,9 @@ class _TransactionCard extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Container(
         decoration: BoxDecoration(
-          color: isDup ? const Color(0xFFF8F8FB) : Colors.white,
+          color: isDup
+              ? AppColors.warning.withValues(alpha: 0.08)
+              : AppColors.card,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isDup
@@ -761,7 +773,7 @@ class _TransactionCard extends StatelessWidget {
               offset: const Offset(0, 6),
             ),
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: Colors.black.withValues(alpha: 0.28),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -908,7 +920,7 @@ class _TransactionCard extends StatelessWidget {
                           labelText: 'Category',
                           isDense: true,
                           filled: true,
-                          fillColor: AppColors.surface,
+                          fillColor: AppColors.surfaceElevated,
                           prefixIcon: const Icon(
                             Icons.category_outlined,
                             size: 20,
@@ -916,6 +928,11 @@ class _TransactionCard extends StatelessWidget {
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
                           ),
+                        ),
+                        dropdownColor: AppColors.card,
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w600,
                         ),
                         items: [
                           ...categories.map((category) {

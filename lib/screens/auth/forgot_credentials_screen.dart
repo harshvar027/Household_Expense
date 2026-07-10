@@ -8,7 +8,7 @@ import '../../models/user_profile.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/auth_validators.dart';
-import '../../widgets/ui/finance_illustration.dart';
+import '../../widgets/ui/app_logo.dart';
 import '../../widgets/ui/glass_surface.dart';
 import '../../widgets/ui/mesh_background.dart';
 
@@ -128,10 +128,9 @@ class _ForgotCredentialsScreenState extends State<ForgotCredentialsScreen> {
                 constraints: const BoxConstraints(maxWidth: 440),
                 child: Column(
                   children: [
-                    const FinanceIllustration(
-                      type: FinanceIllustrationType.wallet,
-                      size: 72,
-                    ).animate().fadeIn().scale(duration: 450.ms),
+                    const AppLogo(size: 96)
+                        .animate()
+                        .scale(duration: 450.ms, curve: Curves.easeOutBack),
                     const SizedBox(height: 16),
                     Text(
                       'Verify your identity',

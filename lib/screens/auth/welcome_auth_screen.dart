@@ -5,16 +5,24 @@ import '../../config/subscription_config.dart';
 import '../../services/auth_service.dart';
 import '../../services/device_enrollment_service.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/ui/finance_illustration.dart';
+import '../../widgets/ui/app_logo.dart';
 import '../../widgets/ui/glass_surface.dart';
 import '../../widgets/ui/mesh_background.dart';
+import 'login_screen.dart';
 import 'register_screen.dart';
 
 /// First-time entry — one household account per device.
 class WelcomeAuthScreen extends StatefulWidget {
   final VoidCallback onRegistered;
 
-  const WelcomeAuthScreen({super.key, required this.onRegistered});
+  /// Called after a successful unlock from the Sign in path.
+  final VoidCallback onSignedIn;
+
+  const WelcomeAuthScreen({
+    super.key,
+    required this.onRegistered,
+    required this.onSignedIn,
+  });
 
   @override
   State<WelcomeAuthScreen> createState() => _WelcomeAuthScreenState();
@@ -22,43 +30,81 @@ class WelcomeAuthScreen extends StatefulWidget {
 
 class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
   bool _deviceEnrolled = false;
+  bool _canSignIn = false;
 
   @override
   void initState() {
     super.initState();
-    _loadEnrollment();
+    _loadState();
   }
 
-  Future<void> _loadEnrollment() async {
+  Future<void> _loadState() async {
     final enrolled = await DeviceEnrollmentService.instance.isEnrolled();
+    final canSignIn = await AuthService.instance.hasAccount() ||
+        await AuthService.instance.hasUnlockCredential();
     if (!mounted) return;
-    setState(() => _deviceEnrolled = enrolled);
+    setState(() {
+      _deviceEnrolled = enrolled;
+      _canSignIn = canSignIn || enrolled;
+    });
   }
 
-  Future<void> _openRegister(BuildContext context) async {
-    final check = await AuthService.instance.checkRegistrationAllowed();
-    if (!context.mounted) return;
-
-    if (!check.allowed) {
-      await showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Account already on this device'),
-          content: Text(check.message),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('OK'),
-            ),
-          ],
+  Future<void> _openSignIn() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (loginContext) => LoginScreen(
+          onSuccess: () {
+            // Pop the pushed unlock screen, then let AuthGate switch to the app.
+            if (loginContext.mounted) {
+              Navigator.of(loginContext).pop();
+            }
+            widget.onSignedIn();
+          },
         ),
-      );
-      return;
-    }
+      ),
+    );
+  }
 
+  Future<void> _openRegister() async {
+    // Do not pre-block without email/phone — enrolled devices must be able to
+    // open the form and re-create with the same identity.
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) => RegisterScreen(onCompleted: widget.onRegistered),
+      ),
+    );
+  }
+
+  Future<void> _showAlreadyRegisteredHelp() async {
+    final check = await AuthService.instance.checkRegistrationAllowed();
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Account already on this device'),
+        content: Text(check.message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          if (_canSignIn)
+            TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _openSignIn();
+              },
+              child: const Text('Sign in'),
+            ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _openRegister();
+            },
+            child: const Text('Re-create account'),
+          ),
+        ],
       ),
     );
   }
@@ -75,10 +121,9 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
                 constraints: const BoxConstraints(maxWidth: 440),
                 child: Column(
                   children: [
-                    const FinanceIllustration(
-                      type: FinanceIllustrationType.wallet,
-                      size: 88,
-                    ).animate().scale(duration: 500.ms, curve: Curves.easeOutBack),
+                    const AppLogo(size: 112)
+                        .animate()
+                        .scale(duration: 500.ms, curve: Curves.easeOutBack),
                     const SizedBox(height: 24),
                     Text(
                       'Household Expense',
@@ -90,8 +135,8 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
                     Text(
                       _deviceEnrolled
                           ? 'Welcome back. This device already has a household account. '
-                              'Re-create it with the same email and mobile number, or restore '
-                              'your backup from Menu after sign-in.'
+                              'Sign in with your PIN, or re-create the account using the '
+                              'same email and mobile number. You can restore a backup from Menu after sign-in.'
                           : 'Track spending, import bank statements, and manage your household budget — all on this device.',
                       textAlign: TextAlign.center,
                       style: const TextStyle(
@@ -106,7 +151,7 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Text(
-                            _deviceEnrolled ? 'Restore your account' : 'New here?',
+                            _deviceEnrolled ? 'Continue' : 'New here?',
                             style: const TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 16,
@@ -116,8 +161,9 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
                           Text(
                             _deviceEnrolled
                                 ? 'Only one household account is allowed on this device. '
-                                    'Use the same email and mobile number as before to set a new PIN. '
-                                    'Your original free-trial period still applies.'
+                                    'Use Sign in if you still have your PIN. '
+                                    'Use Re-create only with the same email and mobile number — '
+                                    'your original free-trial period still applies.'
                                 : 'Create one household account per device. '
                                     'You will set a PIN, email, and mobile number for local sign-in and recovery.',
                             style: const TextStyle(
@@ -127,25 +173,47 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
                             ),
                           ),
                           const SizedBox(height: 20),
-                          FilledButton.icon(
-                            onPressed: () => _openRegister(context),
-                            icon: Icon(
-                              _deviceEnrolled
-                                  ? Icons.restore_rounded
-                                  : Icons.person_add_outlined,
-                            ),
-                            label: Text(
-                              _deviceEnrolled
-                                  ? 'Re-create my account'
-                                  : 'Create account',
-                            ),
-                            style: FilledButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
+                          if (_deviceEnrolled || _canSignIn) ...[
+                            FilledButton.icon(
+                              onPressed: _openSignIn,
+                              icon: const Icon(Icons.login_rounded),
+                              label: const Text('Sign in'),
+                              style: FilledButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
                               ),
                             ),
-                          ),
+                            const SizedBox(height: 12),
+                            OutlinedButton.icon(
+                              onPressed: _openRegister,
+                              icon: const Icon(Icons.restore_rounded),
+                              label: const Text('Re-create my account'),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextButton(
+                              onPressed: _showAlreadyRegisteredHelp,
+                              child: const Text('Why can’t I create a new account?'),
+                            ),
+                          ] else
+                            FilledButton.icon(
+                              onPressed: _openRegister,
+                              icon: const Icon(Icons.person_add_outlined),
+                              label: const Text('Create account'),
+                              style: FilledButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ),

@@ -4,10 +4,9 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../services/auth_service.dart';
 import '../../services/entitlement_service.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/ui/finance_illustration.dart';
+import '../../widgets/ui/app_logo.dart';
 import '../../widgets/ui/mesh_background.dart';
 import 'login_screen.dart';
-import 'register_screen.dart';
 import 'welcome_auth_screen.dart';
 
 class AuthGate extends StatefulWidget {
@@ -21,7 +20,7 @@ class AuthGate extends StatefulWidget {
 
 class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
   bool _loading = true;
-  bool _hasProfile = false;
+  bool _hasAccount = false;
   bool _isLoggedIn = false;
 
   @override
@@ -39,14 +38,11 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Lock when the app goes to background — but not during native file
-    // pickers / system sheets (import, restore, email), which also pause the app.
     if (_isBackgroundLifecycleState(state) &&
         _isLoggedIn &&
         !AuthService.instance.isBackgroundLockSuppressed) {
       AuthService.instance.endSession();
       if (mounted) {
-        // Drop pushed routes so a lock does not strand screens above LoginScreen.
         Navigator.of(context).popUntil((route) => route.isFirst);
         setState(() => _isLoggedIn = false);
       }
@@ -65,11 +61,12 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
       await AuthService.instance.prepareForLaunch();
     }
     await EntitlementService.instance.migrateDeviceEnrollmentIfNeeded();
-    final hasProfile = await AuthService.instance.hasProfile();
+    // Open DB and migrate legacy prefs → app_user before routing.
+    final hasAccount = await AuthService.instance.hasAccount();
     final loggedIn = await AuthService.instance.isLoggedIn();
     if (!mounted) return;
     setState(() {
-      _hasProfile = hasProfile;
+      _hasAccount = hasAccount;
       _isLoggedIn = loggedIn;
       _loading = false;
     });
@@ -77,9 +74,13 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
 
   Future<void> _onUnlocked() async {
     if (!mounted) return;
-    // Session may already be unlocked (e.g. after forgot PIN flow).
+    final hasAccount = await AuthService.instance.hasAccount();
     final loggedIn = await AuthService.instance.isLoggedIn();
-    setState(() => _isLoggedIn = loggedIn);
+    if (!mounted) return;
+    setState(() {
+      _hasAccount = hasAccount;
+      _isLoggedIn = loggedIn;
+    });
   }
 
   @override
@@ -88,17 +89,20 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
       return const _AuthSplash();
     }
 
-    if (!_hasProfile) {
-      return WelcomeAuthScreen(
-        onRegistered: () => _refresh(lockSession: false),
-      );
+    if (_isLoggedIn && _hasAccount) {
+      return widget.authenticatedBuilder(context);
     }
 
-    if (!_isLoggedIn) {
+    // Database already has this household account → sign in with email + PIN.
+    if (_hasAccount) {
       return LoginScreen(onSuccess: _onUnlocked);
     }
 
-    return widget.authenticatedBuilder(context);
+    // No account in the database → welcome / create account.
+    return WelcomeAuthScreen(
+      onRegistered: () => _refresh(lockSession: false),
+      onSignedIn: _onUnlocked,
+    );
   }
 }
 
@@ -113,10 +117,9 @@ class _AuthSplash extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const FinanceIllustration(
-                type: FinanceIllustrationType.wallet,
-                size: 88,
-              ).animate().scale(duration: 500.ms, curve: Curves.easeOutBack),
+              const AppLogo(size: 112)
+                  .animate()
+                  .scale(duration: 500.ms, curve: Curves.easeOutBack),
               const SizedBox(height: 24),
               Text(
                 'Household Expense',

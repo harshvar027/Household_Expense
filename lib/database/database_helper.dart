@@ -7,6 +7,7 @@ import '../models/recurring_transaction.dart';
 import '../models/household_member.dart';
 import '../models/account.dart';
 import '../models/goal.dart';
+import '../models/app_user_record.dart';
 import '../models/user_profile.dart';
 import 'package:path/path.dart';
 import 'package:sqflite_sqlcipher/sqflite.dart';
@@ -48,7 +49,7 @@ class DatabaseHelper {
     final db = await openDatabase(
       path,
       password: password,
-      version: 9,
+      version: 10,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -76,6 +77,7 @@ class DatabaseHelper {
         'goals',
         'categories',
         'bank_transactions',
+        'app_user',
       ]) {
         await txn.delete(table);
       }
@@ -93,6 +95,7 @@ class DatabaseHelper {
       );
       await _insertRows(txn, 'goals', data['goals']);
       await _insertRows(txn, 'bank_transactions', data['bank_transactions']);
+      await _insertRows(txn, 'app_user', data['app_user']);
     });
     final members = await db.query('household_members');
     if (members.isEmpty) {
@@ -104,8 +107,29 @@ class DatabaseHelper {
     await _createCoreTables(db);
     await _createFeatureTables(db);
     await _createFeedbackTable(db);
+    await _createAppUserTable(db);
     await _seedDefaultCategories(db);
     await _seedDefaults(db);
+  }
+
+  Future<void> _createAppUserTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS app_user(
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        name TEXT NOT NULL,
+        email TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        householdName TEXT DEFAULT '',
+        region TEXT NOT NULL,
+        currency TEXT NOT NULL,
+        primaryBankId TEXT DEFAULT '',
+        authMethod TEXT NOT NULL DEFAULT 'pin',
+        secretHash TEXT NOT NULL,
+        biometricEnabled INTEGER DEFAULT 0,
+        createdAt TEXT NOT NULL,
+        updatedAt TEXT NOT NULL
+      )
+    ''');
   }
 
   Future<void> _seedDefaultCategories(Database db) async {
@@ -307,6 +331,38 @@ class DatabaseHelper {
     if (oldVersion < 9) {
       await _addColumnIfMissing(db, 'accounts', 'bankId', "TEXT DEFAULT ''");
     }
+    if (oldVersion < 10) {
+      await _createAppUserTable(db);
+    }
+  }
+
+  // ── App user (local auth account) ───────────────────────────────
+
+  Future<bool> hasAppUser() async {
+    final db = await database;
+    final rows = await db.query('app_user', columns: ['id'], limit: 1);
+    return rows.isNotEmpty;
+  }
+
+  Future<AppUserRecord?> getAppUser() async {
+    final db = await database;
+    final rows = await db.query('app_user', limit: 1);
+    if (rows.isEmpty) return null;
+    return AppUserRecord.fromMap(rows.first);
+  }
+
+  Future<void> upsertAppUser(AppUserRecord user) async {
+    final db = await database;
+    await db.insert(
+      'app_user',
+      user.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<void> deleteAppUser() async {
+    final db = await database;
+    await db.delete('app_user');
   }
 
   Future<void> _addColumnIfMissing(
@@ -619,7 +675,7 @@ class DatabaseHelper {
   Future<Map<String, dynamic>> exportAllData() async {
     final db = await database;
     return {
-      'version': 8,
+      'version': 10,
       'exportedAt': DateTime.now().toIso8601String(),
       'categories': await db.query('categories'),
       'expenses': await db.query('expenses'),
@@ -631,6 +687,7 @@ class DatabaseHelper {
       'accounts': await db.query('accounts'),
       'goals': await db.query('goals'),
       'bank_transactions': await db.query('bank_transactions'),
+      'app_user': await db.query('app_user'),
     };
   }
 

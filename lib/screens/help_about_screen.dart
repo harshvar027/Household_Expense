@@ -7,6 +7,7 @@ import '../models/user_feedback.dart';
 import '../models/user_profile.dart';
 import '../services/feedback_email_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/ui/app_logo.dart';
 import '../widgets/ui/app_scaffold.dart';
 import '../widgets/ui/glass_surface.dart';
 import 'admin/admin_login_screen.dart';
@@ -59,6 +60,8 @@ class _HelpAboutScreenState extends State<HelpAboutScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const Center(child: AppLogo(size: 88)),
+                const SizedBox(height: 16),
                 const Text(
                   'Household Expense',
                   style: TextStyle(
@@ -353,7 +356,7 @@ class _HelpTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: AppColors.card,
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         onTap: () {
@@ -383,6 +386,7 @@ class _HelpTile extends StatelessWidget {
                       style: const TextStyle(
                         fontWeight: FontWeight.w800,
                         fontSize: 15,
+                        color: AppColors.textPrimary,
                       ),
                     ),
                     Text(

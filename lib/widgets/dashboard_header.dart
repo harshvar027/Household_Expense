@@ -4,6 +4,7 @@ import '../../theme/app_theme.dart';
 import '../../theme/neo_palette.dart';
 import '../../utils/money_format.dart';
 import 'ui/animated_counter.dart';
+import 'ui/app_logo.dart';
 import 'ui/neo_glass.dart';
 
 class DashboardHeader extends StatelessWidget {
@@ -118,6 +119,8 @@ class DashboardHeader extends StatelessWidget {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    const AppLogo(size: 48, showShadow: false),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,

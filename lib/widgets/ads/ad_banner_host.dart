@@ -141,13 +141,13 @@ class _AdBannerHostState extends State<AdBannerHost> {
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surfaceElevated,
         border: Border(
-          top: BorderSide(color: Colors.black.withValues(alpha: 0.06)),
+          top: BorderSide(color: AppColors.accent.withValues(alpha: 0.12)),
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.04),
+            color: AppColors.primary.withValues(alpha: 0.08),
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),
@@ -189,7 +189,7 @@ class _AdBannerHostState extends State<AdBannerHost> {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(14),
         child: ColoredBox(
-          color: Colors.white,
+          color: AppColors.surfaceElevated,
           child: SizedBox(
             width: double.infinity,
             height: AdConfig.bannerHeight,

@@ -42,7 +42,7 @@ class ExpenseEntryCard extends StatelessWidget {
       prefixText: prefixText,
       prefixIcon: Icon(icon, color: AppColors.primary),
       filled: true,
-      fillColor: Colors.white,
+      fillColor: AppColors.surfaceElevated,
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
@@ -52,6 +52,8 @@ class ExpenseEntryCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: AppColors.primary, width: 2),
       ),
+      labelStyle: const TextStyle(color: AppColors.textSecondary),
+      hintStyle: const TextStyle(color: AppColors.textMuted),
     );
   }
 
@@ -134,9 +136,11 @@ class ExpenseEntryCard extends StatelessWidget {
             margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.95),
+              color: AppColors.card.withValues(alpha: 0.92),
               borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: Colors.white),
+              border: Border.all(
+                color: AppColors.accent.withValues(alpha: 0.18),
+              ),
             ),
             child: Column(
               children: [
@@ -150,21 +154,28 @@ class ExpenseEntryCard extends StatelessWidget {
                       vertical: 12,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.deepPurple.shade50,
+                      color: AppColors.surfaceElevated,
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.calendar_today, color: Colors.deepPurple.shade400),
+                        const Icon(Icons.calendar_today, color: AppColors.primary),
                         const SizedBox(width: 10),
                         Text(
                           'Date: ${selectedDate.day.toString().padLeft(2, '0')}-'
                           '${selectedDate.month.toString().padLeft(2, '0')}-'
                           '${selectedDate.year}',
-                          style: const TextStyle(fontWeight: FontWeight.w600),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                         const Spacer(),
-                        const Icon(Icons.edit, size: 18),
+                        const Icon(
+                          Icons.edit,
+                          size: 18,
+                          color: AppColors.textSecondary,
+                        ),
                       ],
                     ),
                   ),

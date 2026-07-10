@@ -122,6 +122,51 @@ class AppTheme {
         color: AppColors.accent.withValues(alpha: 0.08),
         thickness: 1,
       ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: AppColors.card,
+        surfaceTintColor: Colors.transparent,
+        titleTextStyle: GoogleFonts.spaceGrotesk(
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          color: AppColors.textPrimary,
+        ),
+        contentTextStyle: GoogleFonts.spaceGrotesk(
+          fontSize: 14,
+          color: AppColors.textSecondary,
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: AppColors.card,
+        surfaceTintColor: Colors.transparent,
+        modalBackgroundColor: AppColors.card,
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: AppColors.surfaceElevated,
+        selectedColor: AppColors.primary.withValues(alpha: 0.22),
+        disabledColor: AppColors.surfaceElevated.withValues(alpha: 0.5),
+        labelStyle: const TextStyle(color: AppColors.textPrimary),
+        secondaryLabelStyle: const TextStyle(color: AppColors.textPrimary),
+        side: BorderSide(color: AppColors.accent.withValues(alpha: 0.16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+      listTileTheme: const ListTileThemeData(
+        iconColor: AppColors.textSecondary,
+        textColor: AppColors.textPrimary,
+        tileColor: Colors.transparent,
+      ),
+      dropdownMenuTheme: DropdownMenuThemeData(
+        menuStyle: MenuStyle(
+          backgroundColor: WidgetStatePropertyAll(AppColors.card),
+          surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+        ),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: AppColors.card,
+        surfaceTintColor: Colors.transparent,
+        textStyle: const TextStyle(color: AppColors.textPrimary),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
     );
 
     return base.copyWith(

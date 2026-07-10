@@ -86,6 +86,8 @@ class ExpenseTrackerApp extends StatelessWidget {
       title: 'Household Expense Tracker !!',
 
       theme: AppTheme.light,
+      darkTheme: AppTheme.light,
+      themeMode: ThemeMode.dark,
       builder: (context, child) {
         final mq = MediaQuery.of(context);
         return MediaQuery(
@@ -1753,7 +1755,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> with WidgetsBindingObserv
         ),
         ),
       ),
-      floatingActionButton: _currentTab == 1 || _currentTab == 0
+      floatingActionButton: _currentTab == 1
           ? Padding(
               padding: EdgeInsets.only(bottom: fabBottom),
               child: GlassFab(

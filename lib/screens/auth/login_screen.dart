@@ -9,7 +9,7 @@ import '../../services/biometric_auth_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/auth_validators.dart';
 import '../../utils/test_registration.dart';
-import '../../widgets/ui/login_hero_illustration.dart';
+import '../../widgets/ui/app_logo.dart';
 import '../../widgets/ui/glass_surface.dart';
 import '../../widgets/ui/mesh_background.dart';
 import 'forgot_credentials_screen.dart';
@@ -26,6 +26,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _identifierController = TextEditingController();
   final _secretController = TextEditingController();
 
   bool _obscureSecret = true;
@@ -60,11 +61,15 @@ class _LoginScreenState extends State<LoginScreen> {
       _lockMethod = method;
       _biometricEnabled = bioEnabled;
       _biometricAvailable = bioAvailable;
+      if (profile != null && _identifierController.text.isEmpty) {
+        _identifierController.text = profile.email;
+      }
     });
   }
 
   Future<void> _tryBiometricUnlock() async {
     if (!_biometricEnabled || !_biometricAvailable || _loading) return;
+    if (_profile == null) return;
 
     final ok = await BiometricAuthService.instance.authenticate(
       reason: 'Unlock your household expense tracker',
@@ -77,6 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
+    _identifierController.dispose();
     _secretController.dispose();
     super.dispose();
   }
@@ -89,13 +95,15 @@ class _LoginScreenState extends State<LoginScreen> {
       _error = null;
     });
 
-    final ok = await AuthService.instance.unlockWithSecret(
-      _secretController.text.trim(),
+    final ok = await AuthService.instance.login(
+      identifier: _identifierController.text.trim(),
+      secret: _secretController.text.trim(),
     );
 
     if (!mounted) return;
 
     if (ok) {
+      setState(() => _loading = false);
       widget.onSuccess();
       return;
     }
@@ -103,8 +111,8 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() {
       _loading = false;
       _error = _lockMethod == AuthLockMethod.password
-          ? 'Incorrect password. Please try again.'
-          : 'Incorrect PIN. Please try again.';
+          ? 'Email/username or password is incorrect.'
+          : 'Email/username or PIN is incorrect.';
     });
   }
 
@@ -122,6 +130,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (ok) {
       await AuthService.instance.unlockSession();
+      if (!mounted) return;
+      setState(() => _loading = false);
       widget.onSuccess();
       return;
     }
@@ -146,9 +156,12 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    final check = await AuthService.instance.checkRegistrationAllowed();
+    final hasAccount = await AuthService.instance.hasAccount();
     if (!mounted) return;
-    if (!check.allowed) {
+
+    if (hasAccount) {
+      final check = await AuthService.instance.checkRegistrationAllowed();
+      if (!mounted) return;
       await showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -157,7 +170,7 @@ class _LoginScreenState extends State<LoginScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
+              child: const Text('OK'),
             ),
             FilledButton(
               onPressed: () {
@@ -181,6 +194,12 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  String? _validateIdentifier(String? value) {
+    final text = value?.trim() ?? '';
+    if (text.isEmpty) return 'Enter your email or username';
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isPassword = _lockMethod == AuthLockMethod.password;
@@ -195,61 +214,61 @@ class _LoginScreenState extends State<LoginScreen> {
                 constraints: const BoxConstraints(maxWidth: 440),
                 child: Column(
                   children: [
-                Stack(
-                  alignment: Alignment.center,
-                  clipBehavior: Clip.none,
-                  children: [
-                    Container(
-                      width: 220,
-                      height: 220,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: RadialGradient(
-                          colors: [
-                            AppColors.primary.withValues(alpha: 0.14),
-                            Colors.transparent,
-                          ],
+                    Stack(
+                      alignment: Alignment.center,
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          width: 220,
+                          height: 220,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: RadialGradient(
+                              colors: [
+                                AppColors.primary.withValues(alpha: 0.14),
+                                Colors.transparent,
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
+                        const AppLogo(size: 168)
+                            .animate()
+                            .fadeIn(duration: 500.ms, curve: Curves.easeOut)
+                            .scale(
+                              begin: const Offset(0.88, 0.88),
+                              end: const Offset(1, 1),
+                              duration: 550.ms,
+                              curve: Curves.easeOutBack,
+                            )
+                            .shimmer(
+                              delay: 600.ms,
+                              duration: 1200.ms,
+                              color: Colors.white.withValues(alpha: 0.18),
+                            ),
+                      ],
                     ),
-                    const LoginHeroIllustration(size: 196)
-                        .animate()
-                        .fadeIn(duration: 500.ms, curve: Curves.easeOut)
-                        .scale(
-                          begin: const Offset(0.88, 0.88),
-                          end: const Offset(1, 1),
-                          duration: 550.ms,
-                          curve: Curves.easeOutBack,
-                        )
-                        .shimmer(
-                          delay: 600.ms,
-                          duration: 1200.ms,
-                          color: Colors.white.withValues(alpha: 0.18),
-                        ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  'Household Expense',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.4,
-                        color: AppColors.primaryDark,
-                      ),
-                ).animate().fadeIn(delay: 120.ms, duration: 400.ms),
-                const SizedBox(height: 6),
-                Text(
-                  'Track · Budget · Manage',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.1,
-                    color: AppColors.primary.withValues(alpha: 0.75),
-                  ),
-                ).animate().fadeIn(delay: 180.ms, duration: 400.ms),
-                const SizedBox(height: 16),
+                    const SizedBox(height: 18),
                     Text(
-                      'Unlock app',
+                      'Household Expense',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.4,
+                            color: AppColors.primaryDark,
+                          ),
+                    ).animate().fadeIn(delay: 120.ms, duration: 400.ms),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Track · Budget · Manage',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.1,
+                        color: AppColors.primary.withValues(alpha: 0.75),
+                      ),
+                    ).animate().fadeIn(delay: 180.ms, duration: 400.ms),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Sign in',
                       style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.w800,
                           ),
@@ -257,8 +276,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 8),
                     Text(
                       _profile != null
-                          ? 'Welcome back, ${_profile!.firstName}'
-                          : 'Enter your PIN or password to continue',
+                          ? 'Welcome back, ${_profile!.firstName}. '
+                              'Account: ${_profile!.email}'
+                          : 'Enter your email/username and PIN to continue',
                       textAlign: TextAlign.center,
                       style: const TextStyle(color: AppColors.textSecondary),
                     ),
@@ -270,6 +290,20 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
+                            TextFormField(
+                              controller: _identifierController,
+                              keyboardType: TextInputType.emailAddress,
+                              textInputAction: TextInputAction.next,
+                              autocorrect: false,
+                              decoration: const InputDecoration(
+                                labelText: 'Email or username',
+                                prefixIcon: Icon(Icons.person_outline),
+                                helperText:
+                                    'Use the email or name from your account',
+                              ),
+                              validator: _validateIdentifier,
+                            ),
+                            const SizedBox(height: 14),
                             TextFormField(
                               controller: _secretController,
                               obscureText: _obscureSecret,
@@ -283,7 +317,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                       LengthLimitingTextInputFormatter(4),
                                     ],
                               decoration: InputDecoration(
-                                labelText: isPassword ? 'Password' : '4-digit PIN',
+                                labelText:
+                                    isPassword ? 'Password' : '4-digit PIN',
                                 prefixIcon: const Icon(Icons.lock_outline),
                                 suffixIcon: IconButton(
                                   icon: Icon(
@@ -300,7 +335,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ? AuthValidators.password
                                   : AuthValidators.pin,
                               onFieldSubmitted: (_) => _submit(),
-                              autofocus: true,
                             ),
                             if (_error != null) ...[
                               const SizedBox(height: 12),
@@ -316,7 +350,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             FilledButton(
                               onPressed: _loading ? null : _submit,
                               style: FilledButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16),
                                 ),
@@ -330,19 +365,21 @@ class _LoginScreenState extends State<LoginScreen> {
                                         color: Colors.white,
                                       ),
                                     )
-                                  : const Text('Unlock'),
+                                  : const Text('Sign in'),
                             ),
                             if (_biometricEnabled && _biometricAvailable) ...[
                               const SizedBox(height: 12),
                               OutlinedButton.icon(
-                                onPressed: _loading ? null : _unlockWithBiometric,
+                                onPressed:
+                                    _loading ? null : _unlockWithBiometric,
                                 icon: const Icon(Icons.fingerprint),
                                 label: const Text('Use fingerprint / Face ID'),
                               ),
                             ],
                             const SizedBox(height: 8),
                             TextButton(
-                              onPressed: _loading ? null : _openForgotCredentials,
+                              onPressed:
+                                  _loading ? null : _openForgotCredentials,
                               child: const Text('Forgot PIN or password?'),
                             ),
                             TextButton(
@@ -360,7 +397,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 11,
-                                  color: AppColors.warning.withValues(alpha: 0.9),
+                                  color:
+                                      AppColors.warning.withValues(alpha: 0.9),
                                 ),
                               ),
                             ],

@@ -8,9 +8,10 @@ import '../../models/app_region.dart';
 import '../../models/user_profile.dart';
 import '../../services/app_locale_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/device_enrollment_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/auth_validators.dart';
-import '../../widgets/ui/finance_illustration.dart';
+import '../../widgets/ui/app_logo.dart';
 import '../../widgets/ui/glass_surface.dart';
 import '../../widgets/ui/mesh_background.dart';
 import '../../widgets/bank_dropdown_field.dart';
@@ -41,6 +42,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _loading = false;
   bool _acceptedTerms = false;
   bool _deviceBlocked = false;
+  bool _isRecreate = false;
   String? _blockMessage;
 
   RegionConfig get _regionConfig => RegionConfig.forRegion(_region);
@@ -53,13 +55,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _checkDeviceRegistration() async {
-    final check = await AuthService.instance.checkRegistrationAllowed();
+    // Only hard-block when a local profile already exists.
+    // Enrolled devices with no profile must still open this form so the
+    // original owner can re-create with the same email + mobile number.
+    final hasProfile = await AuthService.instance.hasAccount();
     if (!mounted) return;
-    if (!check.allowed) {
-      setState(() {
-        _deviceBlocked = true;
-        _blockMessage = check.message;
-      });
+
+    if (hasProfile) {
+      final check = await AuthService.instance.checkRegistrationAllowed();
+      if (!mounted) return;
+      if (!check.allowed) {
+        setState(() {
+          _deviceBlocked = true;
+          _blockMessage = check.message;
+        });
+      }
+      return;
+    }
+
+    final enrolled = await DeviceEnrollmentService.instance.isEnrolled();
+    if (!mounted) return;
+    if (enrolled) {
+      setState(() => _isRecreate = true);
     }
   }
 
@@ -190,7 +207,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   const SizedBox(height: 24),
                   FilledButton(
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: () {
+                      if (Navigator.of(context).canPop()) {
+                        Navigator.of(context).pop();
+                      }
+                    },
                     child: const Text('Go back to sign in'),
                   ),
                 ],
@@ -216,23 +237,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 constraints: const BoxConstraints(maxWidth: 480),
                 child: Column(
                   children: [
-                    const FinanceIllustration(
-                      type: FinanceIllustrationType.chart,
-                      size: 76,
-                    ).animate().fadeIn().scale(duration: 450.ms),
+                    const AppLogo(size: 96)
+                        .animate()
+                        .fadeIn()
+                        .scale(duration: 450.ms),
                     const SizedBox(height: 18),
                     Text(
-                      'Set up your account',
+                      _isRecreate
+                          ? 'Re-create your account'
+                          : 'Set up your account',
                       style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.w800,
                           ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      'Choose your region so dates, currency, and banks match your statements. '
-                      'Statement import uses universal Debit/Credit columns.',
+                    Text(
+                      _isRecreate
+                          ? 'Use the same email and mobile number from your original '
+                              'registration, then set a PIN to unlock the app. Your '
+                              'original free-trial period still applies.'
+                          : 'Choose your region so dates, currency, and banks match your statements. '
+                              'Statement import uses universal Debit/Credit columns.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: AppColors.textSecondary, height: 1.4),
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        height: 1.4,
+                      ),
                     ),
                     const SizedBox(height: 24),
                     GlassSurface.card(

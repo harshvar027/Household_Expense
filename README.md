@@ -1,5 +1,9 @@
 # Household Expense
 
+<p align="center">
+  <img src="assets/branding/app_logo.png" alt="Household Expense logo" width="220" />
+</p>
+
 **Secure, on-device household finance tracker** for Android and iOS — budgets, bank statement import, analytics, encrypted backup, and a clear free-trial → yearly Pro model.
 
 | | |
