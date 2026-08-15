@@ -2,5 +2,7 @@
   "installCommand": "npm ci --prefix website",
   "buildCommand": "npm run build --prefix website",
   "outputDirectory": "website/dist",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/((?!downloads/).*)", "destination": "/index.html" }
+  ]
 }

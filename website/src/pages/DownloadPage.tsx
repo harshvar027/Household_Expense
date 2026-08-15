@@ -2,6 +2,7 @@ import { Download } from 'lucide-react';
 import PageHero from '../components/PageHero';
 import { Magnetic } from '../components/motion';
 import InstallQr from '../components/InstallQr';
+import { APK_DOWNLOAD_URL } from '../lib/apk';
 
 const FAQ = [
   {
@@ -38,8 +39,7 @@ export default function DownloadPage() {
         <div>
           <Magnetic className="inline-flex">
             <a
-              href="/downloads/latest.apk"
-              download="HouseholdExpense.apk"
+              href={APK_DOWNLOAD_URL}
               className="he-btn-mint inline-flex items-center gap-3 rounded-full bg-mint px-8 py-4 text-lg font-bold text-on-mint shadow-[0_0_50px_rgba(46,230,166,0.3)]"
             >
               <Download className="h-5 w-5" /> Download APK

@@ -1,16 +1,9 @@
 import { useMemo } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-
-function apkInstallUrl() {
-  if (typeof window === 'undefined') return `${__INSTALL_ORIGIN__}/downloads/latest.apk`;
-  const host = window.location.hostname;
-  const local = host === 'localhost' || host === '127.0.0.1';
-  const origin = local ? __INSTALL_ORIGIN__ : window.location.origin;
-  return `${origin}/downloads/latest.apk`;
-}
+import { APK_DOWNLOAD_URL } from '../lib/apk';
 
 export default function InstallQr({ size = 200 }: { size?: number }) {
-  const url = useMemo(() => apkInstallUrl(), []);
+  const url = useMemo(() => APK_DOWNLOAD_URL, []);
 
   return (
     <div className="he-glass inline-flex flex-col items-center gap-4 p-5">
@@ -33,7 +26,7 @@ export default function InstallQr({ size = 200 }: { size?: number }) {
       <div className="max-w-[220px] text-center">
         <p className="font-display text-lg text-ink">Scan to install</p>
         <p className="mt-1 text-xs leading-relaxed text-muted">
-          Phone camera opens the APK. Allow install from this source, then tap Open.
+          Downloads the real APK from GitHub (~200 MB). Allow install from this source, then tap Open.
         </p>
       </div>
     </div>
