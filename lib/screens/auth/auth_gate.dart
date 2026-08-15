@@ -59,20 +59,26 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
 
   Future<void> _refresh({bool lockSession = true}) async {
     setState(() => _loading = true);
-    if (lockSession) {
-      await AuthService.instance.prepareForLaunch();
+    try {
+      if (lockSession) {
+        await AuthService.instance.prepareForLaunch();
+      }
+      await EntitlementService.instance.migrateDeviceEnrollmentIfNeeded();
+      await PersonaService.instance.load();
+      final hasAccount = await AuthService.instance.hasAccount();
+      final loggedIn = await AuthService.instance.isLoggedIn();
+      if (!mounted) return;
+      setState(() {
+        _hasAccount = hasAccount;
+        _isLoggedIn = loggedIn;
+        _onboardingDone = PersonaService.instance.onboardingComplete;
+        _loading = false;
+      });
+    } catch (e, st) {
+      debugPrint('AuthGate._refresh failed: $e\n$st');
+      if (!mounted) return;
+      setState(() => _loading = false);
     }
-    await EntitlementService.instance.migrateDeviceEnrollmentIfNeeded();
-    await PersonaService.instance.load();
-    final hasAccount = await AuthService.instance.hasAccount();
-    final loggedIn = await AuthService.instance.isLoggedIn();
-    if (!mounted) return;
-    setState(() {
-      _hasAccount = hasAccount;
-      _isLoggedIn = loggedIn;
-      _onboardingDone = PersonaService.instance.onboardingComplete;
-      _loading = false;
-    });
   }
 
   void _onUnlocked() {

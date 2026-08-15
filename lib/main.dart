@@ -64,7 +64,6 @@ import 'widgets/upgrade_prompt.dart';
 import 'utils/responsive_layout.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -75,8 +74,7 @@ void main() async {
     debugPrint(details.exceptionAsString());
   };
   if (!kIsWeb && Platform.isAndroid) {
-    await applyWorkaroundToOpenSqlite3OnOldAndroidVersions();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   }
   try {
     await PersonaService.instance.load();
