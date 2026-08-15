@@ -40,6 +40,8 @@ class AuthService {
 
   AuthCredentialStore _store = DatabaseAuthCredentialStore();
   bool _migrationChecked = false;
+  AppUserRecord? _cachedUser;
+  bool _userCacheLoaded = false;
 
   /// Nested counter so nested file pickers / share sheets don't unlock early.
   int _backgroundLockSuppressCount = 0;
@@ -51,11 +53,30 @@ class AuthService {
   void debugUseStore(AuthCredentialStore store) {
     _store = store;
     _migrationChecked = false;
+    _invalidateUserCache();
   }
 
   @visibleForTesting
   void debugResetMigrationFlag() {
     _migrationChecked = false;
+    _invalidateUserCache();
+  }
+
+  void _invalidateUserCache() {
+    _cachedUser = null;
+    _userCacheLoaded = false;
+  }
+
+  void _setUserCache(AppUserRecord? user) {
+    _cachedUser = user;
+    _userCacheLoaded = true;
+  }
+
+  Future<AppUserRecord?> _readUserCached() async {
+    if (_userCacheLoaded) return _cachedUser;
+    final user = await _store.readUser();
+    _setUserCache(user);
+    return user;
   }
 
   /// Call around native UI that pauses the Flutter activity (file picker, etc.).
@@ -107,7 +128,8 @@ class AuthService {
   /// True when the encrypted database already has a household account.
   Future<bool> hasAccount() async {
     await ensureAuthReady();
-    return _store.hasUser();
+    final user = await _readUserCached();
+    return user != null;
   }
 
   Future<bool> hasProfile() async => hasAccount();
@@ -115,7 +137,7 @@ class AuthService {
   /// True when a PIN/password hash exists (DB first, then secure storage).
   Future<bool> hasUnlockCredential() async {
     await ensureAuthReady();
-    final user = await _store.readUser();
+    final user = await _readUserCached();
     if (user != null && user.secretHash.isNotEmpty) return true;
     final pin = await _readSecretHash(AuthLockMethod.pin);
     if (pin != null && pin.isNotEmpty) return true;
@@ -130,7 +152,7 @@ class AuthService {
 
   Future<AuthLockMethod> getAuthLockMethod() async {
     await ensureAuthReady();
-    final user = await _store.readUser();
+    final user = await _readUserCached();
     if (user != null) {
       return user.authMethod == 'password'
           ? AuthLockMethod.password
@@ -143,34 +165,69 @@ class AuthService {
 
   Future<bool> isBiometricEnabled() async {
     await ensureAuthReady();
-    final user = await _store.readUser();
+    final user = await _readUserCached();
     if (user != null) return user.biometricEnabled;
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_biometricEnabledKey) ?? false;
   }
 
+  /// Single DB read for lock-screen setup (profile + method + biometrics).
+  Future<({UserProfile? profile, AuthLockMethod method, bool biometricEnabled})>
+      loadLoginUnlockContext() async {
+    await ensureAuthReady();
+    final user = await _readUserCached();
+    if (user != null) {
+      final profile = user.toProfile();
+      AppLocaleService.instance.applyProfile(profile);
+      return (
+        profile: profile,
+        method: user.authMethod == 'password'
+            ? AuthLockMethod.password
+            : AuthLockMethod.pin,
+        biometricEnabled: user.biometricEnabled,
+      );
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_profileKey);
+    UserProfile? profile;
+    if (raw != null) {
+      profile = UserProfile.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+      AppLocaleService.instance.applyProfile(profile);
+    }
+    return (
+      profile: profile,
+      method: prefs.getString(_authMethodKey) == 'password'
+          ? AuthLockMethod.password
+          : AuthLockMethod.pin,
+      biometricEnabled: prefs.getBool(_biometricEnabledKey) ?? false,
+    );
+  }
+
   Future<void> setBiometricEnabled(bool enabled) async {
     await ensureAuthReady();
-    final user = await _store.readUser();
+    final user = await _readUserCached();
     if (user != null) {
-      await _store.upsertUser(
-        user.copyWith(
-          biometricEnabled: enabled,
-          updatedAt: DateTime.now().toIso8601String(),
-        ),
+      final updated = user.copyWith(
+        biometricEnabled: enabled,
+        updatedAt: DateTime.now().toIso8601String(),
       );
+      await _store.upsertUser(updated);
+      _setUserCache(updated);
     }
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_biometricEnabledKey, enabled);
   }
 
-  Future<UserProfile?> getProfile() async {
+  Future<UserProfile?> getProfile({bool mirrorPrefs = false}) async {
     await ensureAuthReady();
-    final user = await _store.readUser();
+    final user = await _readUserCached();
     if (user != null) {
       final profile = user.toProfile();
       AppLocaleService.instance.applyProfile(profile);
-      await _mirrorProfilePrefs(profile);
+      if (mirrorPrefs) {
+        await _mirrorProfilePrefs(profile);
+      }
       return profile;
     }
 
@@ -184,7 +241,7 @@ class AuthService {
 
   Future<AppUserRecord?> getAccountRecord() async {
     await ensureAuthReady();
-    return _store.readUser();
+    return _readUserCached();
   }
 
   Future<void> register({
@@ -215,6 +272,7 @@ class AuthService {
     );
 
     await _store.upsertUser(record);
+    _setUserCache(record);
     await _mirrorProfilePrefs(profile);
     await _writeSecretHashes(pinHash: secretHash, passwordHash: null);
 
@@ -267,15 +325,19 @@ class AuthService {
     required String secret,
   }) async {
     await ensureAuthReady();
-    final user = await _store.readUser();
+    final user = await _readUserCached();
     if (user == null) return false;
 
     if (!identifierMatchesAccount(user, identifier)) return false;
     if (!secretsMatch(user.secretHash, secret)) return false;
 
-    await _mirrorProfilePrefs(user.toProfile());
-    AppLocaleService.instance.applyProfile(user.toProfile());
-    await unlockSession();
+    final profile = user.toProfile();
+    AppLocaleService.instance.applyProfile(profile);
+    // Unlock first so UI can proceed; prefs mirror can finish in parallel.
+    await Future.wait([
+      unlockSession(),
+      _mirrorProfilePrefs(profile),
+    ]);
     return true;
   }
 
@@ -291,15 +353,15 @@ class AuthService {
 
     final hash = hashSecret(newPin);
     await ensureAuthReady();
-    final user = await _store.readUser();
+    final user = await _readUserCached();
     if (user != null) {
-      await _store.upsertUser(
-        user.copyWith(
-          authMethod: 'pin',
-          secretHash: hash,
-          updatedAt: DateTime.now().toIso8601String(),
-        ),
+      final updated = user.copyWith(
+        authMethod: 'pin',
+        secretHash: hash,
+        updatedAt: DateTime.now().toIso8601String(),
       );
+      await _store.upsertUser(updated);
+      _setUserCache(updated);
     }
 
     final prefs = await SharedPreferences.getInstance();
@@ -317,15 +379,15 @@ class AuthService {
 
     final hash = hashSecret(newPassword);
     await ensureAuthReady();
-    final user = await _store.readUser();
+    final user = await _readUserCached();
     if (user != null) {
-      await _store.upsertUser(
-        user.copyWith(
-          authMethod: 'password',
-          secretHash: hash,
-          updatedAt: DateTime.now().toIso8601String(),
-        ),
+      final updated = user.copyWith(
+        authMethod: 'password',
+        secretHash: hash,
+        updatedAt: DateTime.now().toIso8601String(),
       );
+      await _store.upsertUser(updated);
+      _setUserCache(updated);
     }
 
     final prefs = await SharedPreferences.getInstance();
@@ -389,7 +451,7 @@ class AuthService {
     }
 
     await ensureAuthReady();
-    final user = await _store.readUser();
+    final user = await _readUserCached();
     if (user != null) {
       final profile = user.toProfile();
       final maskedEmail = _maskEmail(profile.email);
@@ -446,7 +508,7 @@ class AuthService {
     AuthLockMethod method = AuthLockMethod.pin,
   }) async {
     await ensureAuthReady();
-    final user = await _store.readUser();
+    final user = await _readUserCached();
     if (user == null) {
       throw const AuthException('No account found on this device');
     }
@@ -461,26 +523,26 @@ class AuthService {
     final hash = hashSecret(newSecret);
     final prefs = await SharedPreferences.getInstance();
     if (method == AuthLockMethod.password) {
-      await _store.upsertUser(
-        user.copyWith(
-          authMethod: 'password',
-          secretHash: hash,
-          biometricEnabled: false,
-          updatedAt: DateTime.now().toIso8601String(),
-        ),
+      final updated = user.copyWith(
+        authMethod: 'password',
+        secretHash: hash,
+        biometricEnabled: false,
+        updatedAt: DateTime.now().toIso8601String(),
       );
+      await _store.upsertUser(updated);
+      _setUserCache(updated);
       await _writeSecretHashes(pinHash: null, passwordHash: hash);
       await prefs.remove(_pinHashKey);
       await prefs.setString(_authMethodKey, 'password');
     } else {
-      await _store.upsertUser(
-        user.copyWith(
-          authMethod: 'pin',
-          secretHash: hash,
-          biometricEnabled: false,
-          updatedAt: DateTime.now().toIso8601String(),
-        ),
+      final updated = user.copyWith(
+        authMethod: 'pin',
+        secretHash: hash,
+        biometricEnabled: false,
+        updatedAt: DateTime.now().toIso8601String(),
       );
+      await _store.upsertUser(updated);
+      _setUserCache(updated);
       await _writeSecretHashes(pinHash: hash, passwordHash: null);
       await prefs.remove(_passwordHashKey);
       await prefs.setString(_authMethodKey, 'pin');
@@ -505,20 +567,20 @@ class AuthService {
 
   Future<void> updateProfile(UserProfile profile) async {
     await ensureAuthReady();
-    final user = await _store.readUser();
+    final user = await _readUserCached();
     if (user != null) {
-      await _store.upsertUser(
-        user.copyWith(
-          name: profile.name,
-          email: profile.email,
-          phone: profile.phone,
-          householdName: profile.householdName,
-          region: profile.region,
-          currency: profile.currency,
-          primaryBankId: profile.primaryBankId,
-          updatedAt: DateTime.now().toIso8601String(),
-        ),
+      final updated = user.copyWith(
+        name: profile.name,
+        email: profile.email,
+        phone: profile.phone,
+        householdName: profile.householdName,
+        region: profile.region,
+        currency: profile.currency,
+        primaryBankId: profile.primaryBankId,
+        updatedAt: DateTime.now().toIso8601String(),
       );
+      await _store.upsertUser(updated);
+      _setUserCache(updated);
     }
     await _mirrorProfilePrefs(profile);
     AppLocaleService.instance.applyProfile(profile);
@@ -530,6 +592,7 @@ class AuthService {
   Future<void> clearProfile() async {
     await ensureAuthReady();
     await _store.deleteUser();
+    _invalidateUserCache();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_profileKey);
     await prefs.remove(_pinHashKey);
@@ -555,6 +618,8 @@ class AuthService {
 
   Future<void> _migrateLegacyCredentialsToDbIfNeeded() async {
     if (await _store.hasUser()) {
+      // Warm cache for subsequent auth reads on this launch.
+      await _readUserCached();
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_migratedToDbKey, true);
       return;
@@ -578,6 +643,7 @@ class AuthService {
       biometricEnabled: prefs.getBool(_biometricEnabledKey) ?? false,
     );
     await _store.upsertUser(record);
+    _setUserCache(record);
     await prefs.setBool(_migratedToDbKey, true);
   }
 
@@ -588,7 +654,7 @@ class AuthService {
 
   Future<bool> _verifySecret(String secret) async {
     await ensureAuthReady();
-    final user = await _store.readUser();
+    final user = await _readUserCached();
     if (user != null && user.secretHash.isNotEmpty) {
       return secretsMatch(user.secretHash, secret);
     }

@@ -7,7 +7,7 @@ import '../../theme/neo_palette.dart';
 import '../../utils/money_format.dart';
 import 'pressable_scale.dart';
 
-/// Organic asymmetrical donut chart with neon glow segments.
+/// Clean dark donut for Home — readable center total + soft neon ring.
 class OrganicDonutChart extends StatefulWidget {
   final Map<String, double> categoryTotals;
   final void Function(String category)? onCategoryTap;
@@ -25,37 +25,33 @@ class OrganicDonutChart extends StatefulWidget {
 class _OrganicDonutChartState extends State<OrganicDonutChart>
     with SingleTickerProviderStateMixin {
   int? _touchedIndex;
-  late AnimationController _pulseController;
+  late AnimationController _appearController;
 
   @override
   void initState() {
     super.initState();
-    _pulseController = AnimationController(
+    _appearController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2400),
-    )..repeat(reverse: true);
+      duration: const Duration(milliseconds: 900),
+    )..forward();
   }
 
   @override
   void dispose() {
-    _pulseController.dispose();
+    _appearController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     if (widget.categoryTotals.isEmpty) {
-      return SizedBox(
+      return Container(
         height: 220,
-        child: Center(
-          child: Text(
-            'No spending data yet',
-            style: TextStyle(
-              color: NeoPalette.textMuted.withValues(alpha: 0.9),
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+        alignment: Alignment.center,
+        decoration: ChartStyles.emptyChart(),
+        child: const Text(
+          'No spending data yet',
+          style: ChartStyles.hintLabel,
         ),
       );
     }
@@ -66,58 +62,88 @@ class _OrganicDonutChartState extends State<OrganicDonutChart>
     final colors = NeoPalette.categoryNeons(entries.length);
     final centerLabel = _touchedIndex != null
         ? entries[_touchedIndex!].key
-        : 'Total';
+        : 'This month';
     final centerValue = _touchedIndex != null
         ? entries[_touchedIndex!].value
         : total;
+    final centerPct = _touchedIndex != null && total > 0
+        ? entries[_touchedIndex!].value / total * 100
+        : null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          height: 230,
+          height: 236,
           child: AnimatedBuilder(
-            animation: _pulseController,
+            animation: _appearController,
             builder: (context, _) {
-              return CustomPaint(
-                painter: _OrganicDonutPainter(
-                  entries: entries,
-                  colors: colors,
-                  touchedIndex: _touchedIndex,
-                  pulse: _pulseController.value,
-                ),
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTapUp: (details) => _handleTap(details.localPosition, entries),
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          centerLabel,
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: ChartStyles.hintLabel.copyWith(fontSize: 12),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          formatMoneyWithCurrency(centerValue),
-                          style: ChartStyles.axisLabel.copyWith(fontSize: 20),
-                        ),
-                      ],
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  final chartSize = Size(
+                    constraints.maxWidth,
+                    constraints.maxHeight,
+                  );
+                  return CustomPaint(
+                    painter: _CleanDonutPainter(
+                      entries: entries,
+                      colors: colors,
+                      touchedIndex: _touchedIndex,
+                      progress: Curves.easeOutCubic.transform(
+                        _appearController.value,
+                      ),
                     ),
-                  ),
-                ),
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTapUp: (details) => _handleTap(
+                        details.localPosition,
+                        entries,
+                        chartSize,
+                      ),
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 56),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                centerLabel,
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: ChartStyles.centerTitle,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                formatMoneyWithCurrency(centerValue),
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: ChartStyles.centerValue,
+                              ),
+                              if (centerPct != null) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${centerPct.toStringAsFixed(0)}%',
+                                  style: ChartStyles.hintLabel,
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
               );
             },
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: List.generate(entries.length.clamp(0, 6), (i) {
+          children: List.generate(entries.length.clamp(0, 8), (i) {
             final entry = entries[i];
             final pct = total == 0 ? 0 : (entry.value / total * 100).round();
             final selected = _touchedIndex == i;
@@ -129,8 +155,9 @@ class _OrganicDonutChartState extends State<OrganicDonutChart>
                 widget.onCategoryTap?.call(entry.key);
               },
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                duration: const Duration(milliseconds: 200),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
                 decoration: ChartStyles.legendChip(
                   colors[i],
                   selected: selected,
@@ -146,7 +173,7 @@ class _OrganicDonutChartState extends State<OrganicDonutChart>
                         color: colors[i],
                         boxShadow: [
                           BoxShadow(
-                            color: colors[i].withValues(alpha: 0.8),
+                            color: colors[i].withValues(alpha: 0.65),
                             blurRadius: 6,
                           ),
                         ],
@@ -167,16 +194,16 @@ class _OrganicDonutChartState extends State<OrganicDonutChart>
     );
   }
 
-  void _handleTap(Offset position, List<MapEntry<String, double>> entries) {
-    final box = context.findRenderObject() as RenderBox?;
-    if (box == null) return;
-
-    final size = box.size;
-    final center = Offset(size.width / 2, size.height / 2);
+  void _handleTap(
+    Offset position,
+    List<MapEntry<String, double>> entries,
+    Size chartSize,
+  ) {
+    final center = Offset(chartSize.width / 2, chartSize.height / 2);
     final delta = position - center;
     final distance = delta.distance;
-    final innerR = size.shortestSide * 0.22;
-    final outerR = size.shortestSide * 0.42;
+    final outerR = chartSize.shortestSide * 0.42;
+    final innerR = chartSize.shortestSide * 0.22;
 
     if (distance < innerR || distance > outerR) {
       setState(() => _touchedIndex = null);
@@ -201,76 +228,87 @@ class _OrganicDonutChartState extends State<OrganicDonutChart>
   }
 }
 
-class _OrganicDonutPainter extends CustomPainter {
+class _CleanDonutPainter extends CustomPainter {
   final List<MapEntry<String, double>> entries;
   final List<Color> colors;
   final int? touchedIndex;
-  final double pulse;
+  final double progress;
 
-  _OrganicDonutPainter({
+  _CleanDonutPainter({
     required this.entries,
     required this.colors,
     required this.touchedIndex,
-    required this.pulse,
+    required this.progress,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final baseRadius = size.shortestSide * 0.34;
+    final radius = size.shortestSide * 0.34;
     final total = entries.fold<double>(0, (s, e) => s + e.value);
     if (total == 0) return;
 
-    var startAngle = -math.pi / 2;
-    for (var i = 0; i < entries.length; i++) {
-      final sweep = (entries[i].value / total) * 2 * math.pi;
-      final organic = 1 + 0.12 * math.sin(i * 1.7 + pulse * math.pi * 2);
-      final thickness = (baseRadius * 0.28 * organic).clamp(22.0, 42.0);
-      final radius = baseRadius + (i.isEven ? 6 : -4) + pulse * 3 * (i.isEven ? 1 : -1);
-      final selected = touchedIndex == i;
+    // Track ring
+    final track = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 28
+      ..color = NeoPalette.slateElevated.withValues(alpha: 0.9)
+      ..strokeCap = StrokeCap.round;
+    canvas.drawCircle(center, radius, track);
 
+    var startAngle = -math.pi / 2;
+    final gap = entries.length > 1 ? 0.035 : 0.0;
+
+    for (var i = 0; i < entries.length; i++) {
+      final fullSweep = (entries[i].value / total) * 2 * math.pi;
+      final sweep = (fullSweep - gap).clamp(0.02, fullSweep) * progress;
+      final selected = touchedIndex == i;
+      final thickness = selected ? 34.0 : 28.0;
       final rect = Rect.fromCircle(center: center, radius: radius);
-      final paint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = selected ? thickness + 6 : thickness
-        ..strokeCap = StrokeCap.round
-        ..shader = SweepGradient(
-          startAngle: startAngle,
-          endAngle: startAngle + sweep,
-          colors: [
-            colors[i],
-            Color.lerp(colors[i], NeoPalette.electricAmethyst, 0.35)!,
-            colors[i].withValues(alpha: 0.85),
-          ],
-        ).createShader(rect);
 
       if (selected) {
         final glow = Paint()
           ..style = PaintingStyle.stroke
-          ..strokeWidth = thickness + 14
-          ..strokeCap = StrokeCap.round
-          ..color = colors[i].withValues(alpha: 0.25 + pulse * 0.15)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12);
-        canvas.drawArc(rect, startAngle, sweep * 0.98, false, glow);
+          ..strokeWidth = thickness + 10
+          ..strokeCap = StrokeCap.butt
+          ..color = colors[i].withValues(alpha: 0.22)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
+        canvas.drawArc(rect, startAngle, sweep, false, glow);
       }
 
-      canvas.drawArc(rect, startAngle, sweep * 0.96, false, paint);
-      startAngle += sweep;
+      final paint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = thickness
+        ..strokeCap = StrokeCap.butt
+        ..shader = SweepGradient(
+          startAngle: startAngle,
+          endAngle: startAngle + math.max(sweep, 0.01),
+          colors: [
+            colors[i],
+            Color.lerp(colors[i], Colors.white, 0.18)!,
+            colors[i].withValues(alpha: 0.92),
+          ],
+          transform: GradientRotation(startAngle),
+        ).createShader(rect);
+
+      canvas.drawArc(rect, startAngle, sweep, false, paint);
+      startAngle += fullSweep;
     }
 
-    final innerGlow = Paint()
+    // Soft inner disc
+    final inner = Paint()
       ..shader = RadialGradient(
         colors: [
-          NeoPalette.cyberMint.withValues(alpha: 0.08 + pulse * 0.04),
-          Colors.transparent,
+          NeoPalette.slateCard.withValues(alpha: 0.55),
+          NeoPalette.obsidian.withValues(alpha: 0.15),
         ],
-      ).createShader(Rect.fromCircle(center: center, radius: baseRadius * 0.5));
-    canvas.drawCircle(center, baseRadius * 0.5, innerGlow);
+      ).createShader(Rect.fromCircle(center: center, radius: radius * 0.62));
+    canvas.drawCircle(center, radius * 0.58, inner);
   }
 
   @override
-  bool shouldRepaint(covariant _OrganicDonutPainter oldDelegate) =>
+  bool shouldRepaint(covariant _CleanDonutPainter oldDelegate) =>
       oldDelegate.touchedIndex != touchedIndex ||
-      oldDelegate.pulse != pulse ||
+      oldDelegate.progress != progress ||
       oldDelegate.entries != entries;
 }

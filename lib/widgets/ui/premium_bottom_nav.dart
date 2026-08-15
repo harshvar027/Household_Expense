@@ -17,8 +17,9 @@ class PremiumBottomNav extends StatelessWidget {
 
   static const _items = [
     (Icons.home_rounded, Icons.home_outlined, 'Home'),
-    (Icons.receipt_long_rounded, Icons.receipt_long_outlined, 'Expenses'),
-    (Icons.insights_rounded, Icons.insights_outlined, 'Analytics'),
+    (Icons.swap_horiz_rounded, Icons.swap_horiz_outlined, 'Txns'),
+    (Icons.pie_chart_rounded, Icons.pie_chart_outline_rounded, 'Budgets'),
+    (Icons.flag_rounded, Icons.flag_outlined, 'Goals'),
     (Icons.grid_view_rounded, Icons.grid_view_outlined, 'Menu'),
   ];
 
@@ -202,7 +203,7 @@ class _NavItem extends StatelessWidget {
               duration: const Duration(milliseconds: 260),
               curve: Curves.easeOutCubic,
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 10,
                 fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
                 color: selected ? NeoPalette.cyberMint : AppColors.textMuted,
                 letterSpacing: selected ? -0.2 : 0,

@@ -22,17 +22,21 @@ import 'models/goal.dart';
 import 'models/recurring_transaction.dart';
 import 'screens/import_statement_screen.dart';
 import 'screens/settings_screen.dart';
-import 'screens/add_expense_screen.dart';
 import 'screens/budget_screen.dart';
 import 'screens/tabs/home_tab.dart';
 import 'screens/tabs/expenses_tab.dart';
 import 'screens/tabs/analytics_tab.dart';
 import 'screens/tabs/menu_tab.dart';
+import 'screens/tabs/budgets_tab.dart';
+import 'screens/tabs/goals_tab.dart';
+import 'screens/transactions/add_transaction_hub.dart';
 import 'theme/app_theme.dart';
 import 'theme/neo_palette.dart';
 import 'widgets/ui/mesh_background.dart';
 import 'widgets/ui/premium_bottom_nav.dart';
 import 'widgets/ui/glass_fab.dart';
+import 'widgets/ui/circular_brand_mark.dart';
+import 'widgets/ui/user_avatar.dart';
 import 'services/insights_service.dart';
 import 'services/export_service.dart';
 import 'services/recurring_service.dart';
@@ -46,9 +50,11 @@ import 'screens/auth/auth_gate.dart';
 import 'screens/auth/account_security_screen.dart';
 import 'services/auth_service.dart';
 import 'services/app_locale_service.dart';
+import 'services/persona_service.dart';
 import 'models/user_profile.dart';
 import 'services/ad_service.dart';
 import 'widgets/ads/bottom_ad_ribbon.dart';
+import 'widgets/ads/side_ad_rail.dart';
 import 'screens/help_about_screen.dart';
 import 'screens/feedback_screen.dart';
 import 'screens/subscription_screen.dart';
@@ -68,6 +74,7 @@ void main() async {
     await applyWorkaroundToOpenSqlite3OnOldAndroidVersions();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   }
+  await PersonaService.instance.load();
   runApp(const ExpenseTrackerApp());
   // Initialize ads after first frame — never block app launch.
   WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -80,29 +87,34 @@ class ExpenseTrackerApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      navigatorKey: rootNavigatorKey,
-      title: 'Household Expense Tracker !!',
-
-      theme: AppTheme.light,
-      darkTheme: AppTheme.light,
-      themeMode: ThemeMode.dark,
-      builder: (context, child) {
-        final mq = MediaQuery.of(context);
-        return MediaQuery(
-          data: mq.copyWith(
-            textScaler: mq.textScaler.clamp(
-              minScaleFactor: 0.9,
-              maxScaleFactor: 1.35,
-            ),
+    return ListenableBuilder(
+      listenable: PersonaService.instance,
+      builder: (context, _) {
+        final theme = AppTheme.themed(persona: PersonaService.instance.persona);
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          navigatorKey: rootNavigatorKey,
+          title: 'Household Expense',
+          theme: theme,
+          darkTheme: theme,
+          themeMode: ThemeMode.dark,
+          builder: (context, child) {
+            final mq = MediaQuery.of(context);
+            return MediaQuery(
+              data: mq.copyWith(
+                textScaler: mq.textScaler.clamp(
+                  minScaleFactor: 0.9,
+                  maxScaleFactor: 1.35,
+                ),
+              ),
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
+          home: AuthGate(
+            authenticatedBuilder: (_) => const ExpenseScreen(),
           ),
-          child: child ?? const SizedBox.shrink(),
         );
       },
-      home: AuthGate(
-        authenticatedBuilder: (_) => const ExpenseScreen(),
-      ),
     );
   }
 }
@@ -165,19 +177,21 @@ class _ExpenseScreenState extends State<ExpenseScreen> with WidgetsBindingObserv
   List<String> get paymentMethods =>
       AppLocaleService.instance.config.paymentMethods;
   final List<Color> barColors = NeoPalette.categoryNeons(12);
-  Future<void> loadExpenses() async {
+  Future<void> loadExpenses({bool notify = true, bool summarize = true}) async {
     final data = await DatabaseHelper.instance.getAllExpenses();
 
     expenses = data;
 
-    await calculateSummary();
+    if (summarize) {
+      await calculateSummary();
+    }
 
-    if (!mounted) return;
+    if (!mounted || !notify) return;
 
     setState(() {});
   }
 
-  Future<void> loadCategories() async {
+  Future<void> loadCategories({bool notify = true}) async {
     await DatabaseHelper.instance.ensureDefaultCategories();
     categories = await DatabaseHelper.instance.getCategories();
     categories.sort();
@@ -186,18 +200,19 @@ class _ExpenseScreenState extends State<ExpenseScreen> with WidgetsBindingObserv
       selectedCategory = categories.first;
     }
 
+    if (!mounted || !notify) return;
     setState(() {});
   }
 
-  Future<void> loadIncomes() async {
+  Future<void> loadIncomes({bool notify = true}) async {
     incomes = await DatabaseHelper.instance.getAllIncome();
 
-    if (mounted) {
+    if (mounted && notify) {
       setState(() {});
     }
   }
 
-  Future<void> loadIncome() async {
+  Future<void> loadIncome({bool notify = true}) async {
     manualIncome = await DatabaseHelper.instance.getCurrentMonthIncome(
       selectedMonth,
     );
@@ -210,7 +225,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> with WidgetsBindingObserv
     );
     monthlyIncome = manualIncome + importedIncome + broughtForwardIncome;
 
-    if (mounted) {
+    if (mounted && notify) {
       setState(() {});
     }
   }
@@ -221,13 +236,12 @@ class _ExpenseScreenState extends State<ExpenseScreen> with WidgetsBindingObserv
     }
 
     await Future.wait([
-      loadExpenses(),
-      loadIncomes(),
-      loadMonthlyExpenseTotals(),
+      loadExpenses(notify: false, summarize: false),
+      loadIncomes(notify: false),
     ]);
+    _rebuildMonthlyExpenseTotalsFromMemory();
 
     await Future.wait([
-      loadIncome(),
       loadBudget(),
       loadCategoryBudgets(),
       loadGoals(),
@@ -481,6 +495,11 @@ class _ExpenseScreenState extends State<ExpenseScreen> with WidgetsBindingObserv
     double investments = 0;
     Map<String, double> totals = {};
     Map<String, double> savingsBreakdown = {};
+    final memberTotals = <String, double>{};
+    final memberNames = {
+      for (final m in members)
+        if (m.id != null) m.id!: m.name,
+    };
 
     for (var expense in expenses) {
       final expenseMonth = expense.expenseDate.substring(0, 7);
@@ -498,18 +517,19 @@ class _ExpenseScreenState extends State<ExpenseScreen> with WidgetsBindingObserv
       spendingTotal += expense.amount;
       totals[expense.category] =
           (totals[expense.category] ?? 0) + expense.amount;
+
+      final memberName = memberNames[expense.memberId] ?? 'Unassigned';
+      memberTotals[memberName] = (memberTotals[memberName] ?? 0) + expense.amount;
     }
 
-    manualIncome = await DatabaseHelper.instance.getCurrentMonthIncome(
-      selectedMonth,
-    );
-    importedIncome = await DatabaseHelper.instance.getImportedIncome(
-      selectedMonth,
-    );
-    broughtForwardIncome =
-        await DatabaseHelper.instance.getBalanceBroughtForwardAmount(
-      selectedMonth,
-    );
+    final incomeParts = await Future.wait([
+      DatabaseHelper.instance.getCurrentMonthIncome(selectedMonth),
+      DatabaseHelper.instance.getImportedIncome(selectedMonth),
+      DatabaseHelper.instance.getBalanceBroughtForwardAmount(selectedMonth),
+    ]);
+    manualIncome = incomeParts[0];
+    importedIncome = incomeParts[1];
+    broughtForwardIncome = incomeParts[2];
     monthlyIncome = manualIncome + importedIncome + broughtForwardIncome;
 
     totalExpenses = spendingTotal;
@@ -518,8 +538,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> with WidgetsBindingObserv
     savings = investmentTotal;
     balance = monthlyIncome - totalExpenses - investmentTotal;
     categoryTotals = totals;
-    memberSpending =
-        await DatabaseHelper.instance.getMemberSpending(selectedMonth);
+    memberSpending = memberTotals;
 
     for (final goal in goals) {
       if (goal.linkedCategory != null) {
@@ -577,13 +596,28 @@ class _ExpenseScreenState extends State<ExpenseScreen> with WidgetsBindingObserv
     return (totalExpenses / monthlyBudget) * 100;
   }
 
-  Future<void> loadMonthlyExpenseTotals() async {
+  Future<void> loadMonthlyExpenseTotals({bool notify = true}) async {
     monthlyExpenseTotals = await DatabaseHelper.instance
         .getMonthlyExpenseTotals();
 
-    if (mounted) {
+    if (mounted && notify) {
       setState(() {});
     }
+  }
+
+  void _rebuildMonthlyExpenseTotalsFromMemory() {
+    final monthlyTotals = <String, double>{};
+    for (final expense in expenses) {
+      if (expense.expenseDate.length < 7) continue;
+      if (expense.isTransfer) continue;
+      if (CategoryUtils.isSavingsCategory(expense.category)) continue;
+      final month = expense.expenseDate.substring(0, 7);
+      monthlyTotals[month] = (monthlyTotals[month] ?? 0) + expense.amount;
+    }
+    final sortedKeys = monthlyTotals.keys.toList()..sort();
+    monthlyExpenseTotals = {
+      for (final key in sortedKeys) key: monthlyTotals[key]!,
+    };
   }
 
   Future<void> pickDate() async {
@@ -714,29 +748,45 @@ class _ExpenseScreenState extends State<ExpenseScreen> with WidgetsBindingObserv
       await prefs.setBool(resetKey, true);
     }
 
-    await loadCategories();
-    await loadMembersAndAccounts();
-
+    // Load core data without intermediate rebuilds.
     await Future.wait([
-      loadExpenses(),
-      loadIncomes(),
-      loadGoals(),
-      loadMonthlyExpenseTotals(),
+      loadCategories(notify: false),
+      loadMembersAndAccounts(),
     ]);
 
     await Future.wait([
+      loadExpenses(notify: false, summarize: false),
+      loadIncomes(notify: false),
+      loadGoals(),
       loadBudget(),
       loadCategoryBudgets(),
     ]);
+    _rebuildMonthlyExpenseTotalsFromMemory();
 
-    await processRecurringForMonth();
     await calculateSummary();
-    _generateInsights();
-    await loadIncome();
     userProfile = await AuthService.instance.getProfile();
     if (!paymentMethods.contains(selectedPaymentMethod)) {
       selectedPaymentMethod = paymentMethods.first;
     }
+
+    // Show dashboard ASAP; finish non-critical work after first paint.
+    if (mounted) setState(() => _appReady = true);
+
+    unawaited(_finishPostLoginWork());
+  }
+
+  Future<void> _finishPostLoginWork() async {
+    await processRecurringForMonth();
+    if (!mounted) return;
+
+    // Recurring may have inserted rows after first paint — refresh quietly.
+    await Future.wait([
+      loadExpenses(notify: false, summarize: false),
+      loadIncomes(notify: false),
+    ]);
+    _rebuildMonthlyExpenseTotalsFromMemory();
+    await calculateSummary();
+    _generateInsights();
     await _startSmsQuickEntry();
 
     if (!entitlement!.canUseApp && mounted) {
@@ -744,7 +794,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> with WidgetsBindingObserv
         _openSubscription(blocking: true);
       });
     }
-    if (mounted) setState(() => _appReady = true);
+    if (mounted) setState(() {});
   }
 
   Future<void> _reloadEntitlement() async {
@@ -1352,7 +1402,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> with WidgetsBindingObserv
 
     switch (action) {
       case 'add_expense':
-        await _openAddExpense();
+        await _openTransactionHub();
         return;
       case 'import':
         if (!await _ensureFeature(AppFeature.importStatement)) return;
@@ -1378,9 +1428,6 @@ class _ExpenseScreenState extends State<ExpenseScreen> with WidgetsBindingObserv
         );
         return;
       case 'budget':
-        await _openBudget();
-        return;
-      case 'analytics':
         setState(() => _currentTab = 2);
         _pageController.animateToPage(
           2,
@@ -1388,10 +1435,20 @@ class _ExpenseScreenState extends State<ExpenseScreen> with WidgetsBindingObserv
           curve: Curves.easeOutCubic,
         );
         return;
+      case 'analytics':
+        await _openAnalyticsSheet();
+        return;
       case 'categories':
         await addCategoryDialog();
         return;
       case 'goals':
+        setState(() => _currentTab = 3);
+        _pageController.animateToPage(
+          3,
+          duration: const Duration(milliseconds: 380),
+          curve: Curves.easeOutCubic,
+        );
+        return;
       case 'settings':
         await _openSettings();
         return;
@@ -1504,38 +1561,55 @@ class _ExpenseScreenState extends State<ExpenseScreen> with WidgetsBindingObserv
     }
   }
 
-  Future<void> _openAddExpense() async {
+  Future<void> _openTransactionHub() async {
+    final saved = await AddTransactionHub.open(
+      context,
+      categories: categories,
+      paymentMethods: paymentMethods,
+      members: members,
+      accounts: accounts,
+      defaultMemberId: selectedMemberId,
+      defaultAccountId: selectedAccountId,
+      onSaved: () {
+        unawaited(refreshDashboard());
+      },
+    );
+    if (saved == true) {
+      await refreshDashboard();
+    }
+  }
+
+  Future<void> _openAnalyticsSheet() async {
+    if (!mounted) return;
     await Navigator.push(
       context,
       appPageRoute(
-        AddExpenseScreen(
-          categories: categories,
-          paymentMethods: paymentMethods,
-          selectedCategory: selectedCategory,
-          selectedPaymentMethod: selectedPaymentMethod,
-          selectedDate: selectedDate,
-          itemController: itemController,
-          amountController: amountController,
-          onCategoryChanged: (v) => setState(() => selectedCategory = v),
-          onPaymentMethodChanged: (v) => setState(() => selectedPaymentMethod = v),
-          onPickDate: pickDate,
-          onSave: saveExpense,
-          onImport: () async {
-            if (!await _ensureFeature(AppFeature.importStatement)) return;
-            final imported = await Navigator.push<bool>(
-              context,
-              appPageRoute<bool>(const ImportStatementScreen()),
-            );
-            if (imported == true) {
-              await generateMonths();
-              await refreshDashboard();
-              if (!context.mounted) return;
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Bank statement imported successfully')),
-              );
-            }
-          },
+        Scaffold(
+          backgroundColor: AppColors.surface,
+          appBar: AppBar(title: const Text('Analytics')),
+          body: MeshBackground(
+            child: AnalyticsTab(
+              monthLabel: getSelectedMonthLabel(),
+              categoryTotals: categoryTotals,
+              monthlyExpenseTotals: monthlyExpenseTotals,
+              categoryBudgets: categoryBudgets,
+              memberSpending: memberSpending,
+              categories: categories
+                  .where((c) => !CategoryUtils.isSavingsCategory(c))
+                  .toList(),
+              barColors: barColors,
+              insights: insights,
+              goals: goals,
+              highestCategory: getHighestCategory(),
+              highestExpense: getLargestExpense(),
+              transactionCount: getTransactionCount(),
+              budgetUsed: getBudgetUsed(),
+              onCategoryTap: showExpensesForCategory,
+              onSaveBudget: saveCategoryBudget,
+              onManageGoals: _openSettings,
+              bottomScrollPadding: 40,
+            ),
+          ),
         ),
       ),
     );
@@ -1608,8 +1682,13 @@ class _ExpenseScreenState extends State<ExpenseScreen> with WidgetsBindingObserv
 
     final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
     final isPremium = entitlement?.hasActivePremium ?? false;
-    final showBottomBanner = !keyboardOpen && _currentTab != 3 && !isPremium;
-    final showMenuAds = !isPremium && _currentTab == 3;
+    // Hide ads on Menu tab (index 4)
+    final showBottomBanner = !keyboardOpen && _currentTab != 4 && !isPremium;
+    final showMenuAds = !isPremium && _currentTab == 4;
+    final showSideAds = !isPremium &&
+        _currentTab != 4 &&
+        !keyboardOpen &&
+        SideAdRail.shouldShow(context);
     final fabBottom = ResponsiveLayout.fabBottomOffset(
       context,
       showBottomAd: showBottomBanner,
@@ -1624,7 +1703,11 @@ class _ExpenseScreenState extends State<ExpenseScreen> with WidgetsBindingObserv
       showBottomAd: showBottomBanner,
       includeFabClearance: true,
     );
-    final analyticsScrollBottom = ResponsiveLayout.scrollBottomPadding(
+    final budgetsScrollBottom = ResponsiveLayout.scrollBottomPadding(
+      context,
+      showBottomAd: showBottomBanner,
+    );
+    final goalsScrollBottom = ResponsiveLayout.scrollBottomPadding(
       context,
       showBottomAd: showBottomBanner,
     );
@@ -1639,129 +1722,164 @@ class _ExpenseScreenState extends State<ExpenseScreen> with WidgetsBindingObserv
           subscriptionExpiresAt: null,
           evaluatedAt: DateTime.now(),
         );
+    final accent = AppTheme.accentOf(context);
 
     return Scaffold(
       backgroundColor: AppColors.surface,
       extendBody: true,
-      body: MeshBackground(
-        child: SafeArea(
-          bottom: false,
-          child: ResponsiveLayout.constrainContent(
-            context,
-            PageView(
-            controller: _pageController,
-            physics: const NeverScrollableScrollPhysics(),
-            onPageChanged: (index) => setState(() => _currentTab = index),
-            children: [
-            HomeTab(
-              selectedMonth: selectedMonth,
-              months: months,
-              monthLabel: getSelectedMonthLabel(),
-              monthlyIncome: monthlyIncome,
-              manualIncome: manualIncome,
-              importedIncome: importedIncome,
-              broughtForwardIncome: broughtForwardIncome,
-              totalExpenses: totalExpenses,
-              investmentTotal: investmentTotal,
-              balance: balance,
-              monthlyBudget: monthlyBudget,
-              categoryTotals: categoryTotals,
-              monthlyExpenseTotals: monthlyExpenseTotals,
-              insights: insights,
-              missingRecurring: missingRecurring,
-              dismissMissingBanner: dismissMissingBanner,
-              highestCategory: getHighestCategory(),
-              transactionCount: getTransactionCount(),
-              userName: userProfile?.name,
-              householdName: userProfile?.householdName,
-              onMonthChanged: (value) async {
-                selectedMonth = value;
-                shownBudgetAlerts.clear();
-                updateDefaultDate();
-                await refreshDashboard();
-              },
-              onDismissBanner: () => setState(() => dismissMissingBanner = true),
-              onAddExpense: _openAddExpense,
-              onViewTransactions: () {
-                setState(() => _currentTab = 1);
-                _pageController.animateToPage(
-                  1,
-                  duration: const Duration(milliseconds: 380),
-                  curve: Curves.easeOutCubic,
-                );
-              },
-              onViewAnalytics: () {
-                setState(() => _currentTab = 2);
-                _pageController.animateToPage(
-                  2,
-                  duration: const Duration(milliseconds: 380),
-                  curve: Curves.easeOutCubic,
-                );
-              },
-              onAccountSettings: _openAccountSecurity,
-              onManageSettings: _openSettings,
-              onLogout: _confirmLogout,
-              bottomScrollPadding: homeScrollBottom,
-            ),
-            ExpensesTab(
-              monthLabel: getSelectedMonthLabel(),
-              expenses: filteredExpenses,
-              investments: filteredInvestments,
-              incomes: filteredIncomes,
-              investmentTotal: investmentTotal,
-              categories: categories,
-              paymentMethods: paymentMethods,
-              filter: expenseFilter,
-              onFilterChanged: (f) => setState(() => expenseFilter = f),
-              formatDate: formatDate,
-              onEditExpense: editExpenseDialog,
-              onDeleteExpense: deleteExpense,
-              onEditIncome: editIncomeDialog,
-              onDeleteIncome: deleteIncome,
-              isSystemIncome: isSystemIncome,
-              accountNames: accountNamesById,
-              accountBankLabels: accountBankLabelsById,
-              bottomScrollPadding: expensesScrollBottom,
-            ),
-            AnalyticsTab(
-              monthLabel: getSelectedMonthLabel(),
-              categoryTotals: categoryTotals,
-              monthlyExpenseTotals: monthlyExpenseTotals,
-              categoryBudgets: categoryBudgets,
-              memberSpending: memberSpending,
-              categories: categories
-                  .where((c) => !CategoryUtils.isSavingsCategory(c))
-                  .toList(),
-              barColors: barColors,
-              insights: insights,
-              goals: goals,
-              highestCategory: getHighestCategory(),
-              highestExpense: getLargestExpense(),
-              transactionCount: getTransactionCount(),
-              budgetUsed: getBudgetUsed(),
-              onCategoryTap: showExpensesForCategory,
-              onSaveBudget: saveCategoryBudget,
-              onManageGoals: _openSettings,
-              bottomScrollPadding: analyticsScrollBottom,
-            ),
-            MenuTab(
-                onAction: _handleMenuAction,
-                adsActive: showMenuAds,
-                entitlement: menuEntitlement,
-                bottomScrollPadding: menuScrollBottom,
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (showSideAds) const SideAdRail(active: true, isLeft: true),
+          Expanded(
+            child: MeshBackground(
+              child: SafeArea(
+                bottom: false,
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 8, 12, 4),
+                      child: Row(
+                        children: [
+                          const Expanded(
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: CircularBrandMark(size: 46, showWordmark: true),
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: 'Analytics',
+                            onPressed: _openAnalyticsSheet,
+                            icon: Icon(Icons.insights_rounded, color: accent),
+                          ),
+                          const SizedBox(width: 4),
+                          GestureDetector(
+                            onTap: _openAccountSecurity,
+                            child: UserAvatar(
+                              name: userProfile?.name,
+                              radius: 18,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: ResponsiveLayout.constrainContent(
+                        context,
+                        PageView(
+                          controller: _pageController,
+                          physics: const NeverScrollableScrollPhysics(),
+                          onPageChanged: (index) =>
+                              setState(() => _currentTab = index),
+                          children: [
+                            HomeTab(
+                              selectedMonth: selectedMonth,
+                              months: months,
+                              monthLabel: getSelectedMonthLabel(),
+                              monthlyIncome: monthlyIncome,
+                              manualIncome: manualIncome,
+                              importedIncome: importedIncome,
+                              broughtForwardIncome: broughtForwardIncome,
+                              totalExpenses: totalExpenses,
+                              investmentTotal: investmentTotal,
+                              balance: balance,
+                              monthlyBudget: monthlyBudget,
+                              categoryTotals: categoryTotals,
+                              monthlyExpenseTotals: monthlyExpenseTotals,
+                              insights: insights,
+                              missingRecurring: missingRecurring,
+                              dismissMissingBanner: dismissMissingBanner,
+                              highestCategory: getHighestCategory(),
+                              transactionCount: getTransactionCount(),
+                              userName: userProfile?.name,
+                              householdName: userProfile?.householdName,
+                              onMonthChanged: (value) async {
+                                selectedMonth = value;
+                                shownBudgetAlerts.clear();
+                                updateDefaultDate();
+                                await refreshDashboard();
+                              },
+                              onDismissBanner: () =>
+                                  setState(() => dismissMissingBanner = true),
+                              onAddExpense: _openTransactionHub,
+                              onViewTransactions: () {
+                                setState(() => _currentTab = 1);
+                                _pageController.animateToPage(
+                                  1,
+                                  duration: const Duration(milliseconds: 380),
+                                  curve: Curves.easeOutCubic,
+                                );
+                              },
+                              onViewAnalytics: _openAnalyticsSheet,
+                              onAccountSettings: _openAccountSecurity,
+                              onManageSettings: _openSettings,
+                              onLogout: _confirmLogout,
+                              bottomScrollPadding: homeScrollBottom,
+                            ),
+                            ExpensesTab(
+                              monthLabel: getSelectedMonthLabel(),
+                              expenses: filteredExpenses,
+                              investments: filteredInvestments,
+                              incomes: filteredIncomes,
+                              investmentTotal: investmentTotal,
+                              categories: categories,
+                              paymentMethods: paymentMethods,
+                              filter: expenseFilter,
+                              onFilterChanged: (f) =>
+                                  setState(() => expenseFilter = f),
+                              formatDate: formatDate,
+                              onEditExpense: editExpenseDialog,
+                              onDeleteExpense: deleteExpense,
+                              onEditIncome: editIncomeDialog,
+                              onDeleteIncome: deleteIncome,
+                              isSystemIncome: isSystemIncome,
+                              accountNames: accountNamesById,
+                              accountBankLabels: accountBankLabelsById,
+                              bottomScrollPadding: expensesScrollBottom,
+                            ),
+                            BudgetsTab(
+                              monthLabel: getSelectedMonthLabel(),
+                              monthlyBudget: monthlyBudget,
+                              totalExpenses: totalExpenses,
+                              categoryTotals: categoryTotals,
+                              categoryBudgets: categoryBudgets,
+                              categories: categories
+                                  .where((c) => !CategoryUtils.isSavingsCategory(c))
+                                  .toList(),
+                              onOpenFullBudget: _openBudget,
+                              onSaveCategoryBudget: saveCategoryBudget,
+                              bottomScrollPadding: budgetsScrollBottom,
+                            ),
+                            GoalsTab(
+                              goals: goals,
+                              onManage: _openSettings,
+                              bottomScrollPadding: goalsScrollBottom,
+                            ),
+                            MenuTab(
+                              onAction: _handleMenuAction,
+                              adsActive: showMenuAds,
+                              entitlement: menuEntitlement,
+                              bottomScrollPadding: menuScrollBottom,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ],
+            ),
           ),
-        ),
-        ),
+          if (showSideAds) const SideAdRail(active: true, isLeft: false),
+        ],
       ),
-      floatingActionButton: _currentTab == 1
+      floatingActionButton: (_currentTab == 0 || _currentTab == 1)
           ? Padding(
               padding: EdgeInsets.only(bottom: fabBottom),
               child: GlassFab(
-                onPressed: _openAddExpense,
+                onPressed: _openTransactionHub,
                 icon: Icons.add_rounded,
-                label: 'Add Expense',
+                label: 'Add',
               ),
             )
           : null,
@@ -1770,16 +1888,16 @@ class _ExpenseScreenState extends State<ExpenseScreen> with WidgetsBindingObserv
         children: [
           BottomAdRibbon(visible: showBottomBanner),
           PremiumBottomNav(
-        selectedIndex: _currentTab,
-        onSelected: (index) {
-          setState(() => _currentTab = index);
-          _pageController.animateToPage(
-            index,
-            duration: const Duration(milliseconds: 380),
-            curve: Curves.easeOutCubic,
-          );
-        },
-      ),
+            selectedIndex: _currentTab,
+            onSelected: (index) {
+              setState(() => _currentTab = index);
+              _pageController.animateToPage(
+                index,
+                duration: const Duration(milliseconds: 380),
+                curve: Curves.easeOutCubic,
+              );
+            },
+          ),
         ],
       ),
     );

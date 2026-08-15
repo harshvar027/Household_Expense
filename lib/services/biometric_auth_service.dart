@@ -39,8 +39,11 @@ class BiometricAuthService {
     }
   }
 
-  Future<bool> authenticate({String reason = 'Unlock Household Expense'}) async {
-    if (!await isAvailable()) return false;
+  Future<bool> authenticate({
+    String reason = 'Unlock Household Expense',
+    bool skipAvailabilityCheck = false,
+  }) async {
+    if (!skipAvailabilityCheck && !await isAvailable()) return false;
 
     try {
       return await _auth.authenticate(

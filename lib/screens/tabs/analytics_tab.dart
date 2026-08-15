@@ -115,8 +115,9 @@ class AnalyticsTab extends StatelessWidget {
                   const SizedBox(height: 20),
                 ],
                 _ChartCard(
-                  title: 'Monthly Trend',
-                  icon: Icons.show_chart_rounded,
+                  title: 'Monthly trend',
+                  subtitle: 'Spend over recent months',
+                  icon: Icons.bar_chart_rounded,
                   color: AppColors.primary,
                   child: MonthlyTrendChart(
                     monthlyExpenseTotals: monthlyExpenseTotals,
@@ -125,8 +126,9 @@ class AnalyticsTab extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 _ChartCard(
-                  title: 'Expense Distribution',
-                  icon: Icons.pie_chart_rounded,
+                  title: 'Expense breakdown',
+                  subtitle: 'Share of spend by category',
+                  icon: Icons.donut_large_rounded,
                   color: AppColors.savings,
                   child: ExpensePieChart(
                     categoryTotals: categoryTotals,
@@ -162,12 +164,14 @@ class AnalyticsTab extends StatelessWidget {
 
 class _ChartCard extends StatelessWidget {
   final String title;
+  final String? subtitle;
   final IconData icon;
   final Color color;
   final Widget child;
 
   const _ChartCard({
     required this.title,
+    this.subtitle,
     required this.icon,
     required this.color,
     required this.child,
@@ -177,7 +181,7 @@ class _ChartCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return NeoGlass.card(
       glowColor: color,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
       borderRadius: 24,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -185,31 +189,50 @@ class _ChartCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(9),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      color.withValues(alpha: 0.25),
+                      color.withValues(alpha: 0.28),
                       color.withValues(alpha: 0.08),
                     ],
                   ),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: color.withValues(alpha: 0.35)),
                 ),
                 child: Icon(icon, color: color, size: 20),
               ),
-              const SizedBox(width: 10),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle!,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           child,
         ],
       ),

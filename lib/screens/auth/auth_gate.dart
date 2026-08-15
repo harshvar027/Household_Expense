@@ -3,10 +3,12 @@ import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../services/auth_service.dart';
 import '../../services/entitlement_service.dart';
+import '../../services/persona_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/ui/app_logo.dart';
 import '../../widgets/ui/mesh_background.dart';
 import 'login_screen.dart';
+import 'persona_onboarding_screen.dart';
 import 'welcome_auth_screen.dart';
 
 class AuthGate extends StatefulWidget {
@@ -22,6 +24,7 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
   bool _loading = true;
   bool _hasAccount = false;
   bool _isLoggedIn = false;
+  bool _onboardingDone = false;
 
   @override
   void initState() {
@@ -51,7 +54,6 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
 
   bool _isBackgroundLifecycleState(AppLifecycleState state) {
     return state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive ||
         state == AppLifecycleState.hidden;
   }
 
@@ -61,25 +63,24 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
       await AuthService.instance.prepareForLaunch();
     }
     await EntitlementService.instance.migrateDeviceEnrollmentIfNeeded();
-    // Open DB and migrate legacy prefs → app_user before routing.
+    await PersonaService.instance.load();
     final hasAccount = await AuthService.instance.hasAccount();
     final loggedIn = await AuthService.instance.isLoggedIn();
     if (!mounted) return;
     setState(() {
       _hasAccount = hasAccount;
       _isLoggedIn = loggedIn;
+      _onboardingDone = PersonaService.instance.onboardingComplete;
       _loading = false;
     });
   }
 
-  Future<void> _onUnlocked() async {
-    if (!mounted) return;
-    final hasAccount = await AuthService.instance.hasAccount();
-    final loggedIn = await AuthService.instance.isLoggedIn();
+  void _onUnlocked() {
     if (!mounted) return;
     setState(() {
-      _hasAccount = hasAccount;
-      _isLoggedIn = loggedIn;
+      _hasAccount = true;
+      _isLoggedIn = true;
+      _onboardingDone = PersonaService.instance.onboardingComplete;
     });
   }
 
@@ -90,15 +91,21 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
     }
 
     if (_isLoggedIn && _hasAccount) {
+      if (!_onboardingDone) {
+        return PersonaOnboardingScreen(
+          onComplete: () {
+            if (!mounted) return;
+            setState(() => _onboardingDone = true);
+          },
+        );
+      }
       return widget.authenticatedBuilder(context);
     }
 
-    // Database already has this household account → sign in with email + PIN.
     if (_hasAccount) {
       return LoginScreen(onSuccess: _onUnlocked);
     }
 
-    // No account in the database → welcome / create account.
     return WelcomeAuthScreen(
       onRegistered: () => _refresh(lockSession: false),
       onSignedIn: _onUnlocked,

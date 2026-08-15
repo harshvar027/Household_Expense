@@ -759,6 +759,11 @@ class DatabaseHelper {
   }
 
   Future<void> ensureDefaultCategories() async {
+    final db = await database;
+    final count = Sqflite.firstIntValue(
+      await db.rawQuery('SELECT COUNT(*) FROM categories'),
+    );
+    if ((count ?? 0) > 0) return;
     await seedDefaultCategories();
   }
 
@@ -1084,23 +1089,25 @@ class DatabaseHelper {
 
   Future<Map<String, double>> getMonthlyExpenseTotals() async {
     final db = await database;
-    final expenses = await db.query('expenses');
+    final rows = await db.rawQuery('''
+      SELECT substr(expenseDate, 1, 7) AS month, category, SUM(amount) AS total
+      FROM expenses
+      WHERE length(expenseDate) >= 7
+        AND (isTransfer IS NULL OR isTransfer = 0)
+      GROUP BY substr(expenseDate, 1, 7), category
+      ORDER BY month
+    ''');
+
     final monthlyTotals = <String, double>{};
-
-    for (var expense in expenses) {
-      final date = expense['expenseDate'] as String;
-      if (date.length < 7) continue;
-      final category = expense['category'] as String;
+    for (final row in rows) {
+      final month = row['month'] as String?;
+      final category = row['category'] as String? ?? '';
+      if (month == null || month.isEmpty) continue;
       if (CategoryUtils.isSavingsCategory(category)) continue;
-      if ((expense['isTransfer'] as int? ?? 0) == 1) continue;
-
-      final month = date.substring(0, 7);
-      final amount = (expense['amount'] as num).toDouble();
-      monthlyTotals[month] = (monthlyTotals[month] ?? 0) + amount;
+      final amount = (row['total'] as num?)?.toDouble() ?? 0;
+      monthlyTotals[month] = roundMoney((monthlyTotals[month] ?? 0) + amount);
     }
-
-    final sortedKeys = monthlyTotals.keys.toList()..sort();
-    return {for (final key in sortedKeys) key: monthlyTotals[key]!};
+    return monthlyTotals;
   }
 
   Future<Map<String, double>> getMemberSpending(String month) async {

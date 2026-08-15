@@ -183,7 +183,7 @@ class HomeTab extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 22),
-                NeoGlass.sectionHeader('Spending DNA', trailing: monthLabel),
+                NeoGlass.sectionHeader('Spending by category', trailing: monthLabel),
                 const SizedBox(height: 14),
                 NeoGlass.card(
                   glowColor: NeoPalette.electricAmethyst,
@@ -193,14 +193,14 @@ class HomeTab extends StatelessWidget {
                   ),
                 ).animate(delay: 200.ms).fadeIn().slideY(begin: 0.06, end: 0),
                 const SizedBox(height: 22),
-                NeoGlass.sectionHeader('Growth Curve'),
+                NeoGlass.sectionHeader('Monthly trend'),
                 const SizedBox(height: 14),
                 NeoGlass.card(
                   glowColor: NeoPalette.cyberMint,
                   padding: const EdgeInsets.all(18),
                   child: HolographicGrowthChart(
                     monthlyTotals: monthlyExpenseTotals,
-                    title: 'Monthly Spend Flow',
+                    title: 'Latest month spend',
                     accentColor: NeoPalette.cyberMint,
                   ),
                 ).animate(delay: 280.ms).fadeIn().slideY(begin: 0.06, end: 0),

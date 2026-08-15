@@ -63,20 +63,29 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles("proguard-rules.pro")
-            if (!hasReleaseKeystore) {
-                throw GradleException(
-                    "Release build requires android/key.properties and upload keystore. " +
-                        "Run: .\\scripts\\android-release-setup.ps1",
-                )
+            // Only configure release signing when keystore exists.
+            // Keystore check runs in whenReady so debug builds are not blocked.
+            if (hasReleaseKeystore) {
+                if (admobAppId == admobTestAppId) {
+                    logger.warn(
+                        "WARNING: AdMob is using Google's TEST app ID. " +
+                            "Create android/admob.properties with your production appId before Play upload.",
+                    )
+                }
+                signingConfig = signingConfigs.getByName("release")
             }
-            if (admobAppId == admobTestAppId) {
-                logger.warn(
-                    "WARNING: AdMob is using Google's TEST app ID. " +
-                        "Create android/admob.properties with your production appId before Play upload.",
-                )
-            }
-            signingConfig = signingConfigs.getByName("release")
         }
+    }
+}
+
+// Fail only when a release task is actually requested (not during debug configure).
+gradle.taskGraph.whenReady {
+    val isReleaseTask = allTasks.any { it.name.contains("Release", ignoreCase = true) }
+    if (isReleaseTask && !hasReleaseKeystore) {
+        throw GradleException(
+            "Release build requires android/key.properties and upload keystore. " +
+                "Run: .\\scripts\\android-release-setup.ps1",
+        )
     }
 }
 

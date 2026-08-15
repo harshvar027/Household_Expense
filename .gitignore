@@ -60,3 +60,9 @@ app.*.map.json
 /android/key.properties
 /android/*.jks
 /android/*.keystore
+
+# Website
+website/node_modules/
+website/dist/
+**/.DS_Store
+website/tsconfig.tsbuildinfo

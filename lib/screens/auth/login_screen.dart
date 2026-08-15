@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -44,25 +46,29 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _bootstrap() async {
+    // Show the form as soon as auth context is ready; biometrics can follow.
     await _loadContext();
     if (!mounted) return;
-    await _tryBiometricUnlock();
+    unawaited(_tryBiometricUnlock());
   }
 
   Future<void> _loadContext() async {
-    final profile = await AuthService.instance.getProfile();
-    final method = await AuthService.instance.getAuthLockMethod();
-    final bioEnabled = await AuthService.instance.isBiometricEnabled();
-    final bioAvailable = await BiometricAuthService.instance.isAvailable();
+    final results = await Future.wait([
+      AuthService.instance.loadLoginUnlockContext(),
+      BiometricAuthService.instance.isAvailable(),
+    ]);
+    final context =
+        results[0] as ({UserProfile? profile, AuthLockMethod method, bool biometricEnabled});
+    final bioAvailable = results[1] as bool;
 
     if (!mounted) return;
     setState(() {
-      _profile = profile;
-      _lockMethod = method;
-      _biometricEnabled = bioEnabled;
+      _profile = context.profile;
+      _lockMethod = context.method;
+      _biometricEnabled = context.biometricEnabled;
       _biometricAvailable = bioAvailable;
-      if (profile != null && _identifierController.text.isEmpty) {
-        _identifierController.text = profile.email;
+      if (context.profile != null && _identifierController.text.isEmpty) {
+        _identifierController.text = context.profile!.email;
       }
     });
   }
@@ -73,6 +79,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final ok = await BiometricAuthService.instance.authenticate(
       reason: 'Unlock your household expense tracker',
+      skipAvailabilityCheck: true,
     );
     if (!ok || !mounted) return;
 
@@ -124,6 +131,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final ok = await BiometricAuthService.instance.authenticate(
       reason: 'Unlock your household expense tracker',
+      skipAvailabilityCheck: true,
     );
 
     if (!mounted) return;

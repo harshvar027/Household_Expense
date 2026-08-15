@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'neo_palette.dart';
+import 'persona_palette.dart';
 
 class AppColors {
   // Neo-futuristic core
@@ -39,13 +40,30 @@ class AppColors {
 }
 
 class AppTheme {
-  static ThemeData get light {
+  static Color accentOf(BuildContext context) =>
+      Theme.of(context).colorScheme.secondary;
+
+  static Color mutedOf(BuildContext context) => AppColors.textMuted;
+
+  static TextStyle displayOf(BuildContext context, {double fontSize = 20}) {
+    return GoogleFonts.spaceGrotesk(
+      fontSize: fontSize,
+      fontWeight: FontWeight.w700,
+      letterSpacing: -0.3,
+      color: Theme.of(context).colorScheme.onSurface,
+    );
+  }
+
+  static ThemeData get light => themed();
+
+  static ThemeData themed({String? persona}) {
+    final accents = PersonaPalette.of(persona);
     final base = ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      colorScheme: const ColorScheme.dark(
-        primary: AppColors.primary,
-        secondary: AppColors.accent,
+      colorScheme: ColorScheme.dark(
+        primary: accents.accentStrong,
+        secondary: accents.accent,
         surface: AppColors.surface,
         onSurface: AppColors.textPrimary,
       ),
@@ -82,8 +100,8 @@ class AppTheme {
         ),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        backgroundColor: accents.accent,
+        foregroundColor: const Color(0xFF06080A),
         elevation: 8,
         highlightElevation: 12,
         shape: RoundedRectangleBorder(
@@ -95,15 +113,15 @@ class AppTheme {
         fillColor: AppColors.surfaceElevated,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: AppColors.accent.withValues(alpha: 0.15)),
+          borderSide: BorderSide(color: accents.accent.withValues(alpha: 0.15)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: AppColors.accent.withValues(alpha: 0.12)),
+          borderSide: BorderSide(color: accents.accent.withValues(alpha: 0.12)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: AppColors.cyberMint, width: 2),
+          borderSide: BorderSide(color: accents.accent, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         labelStyle: const TextStyle(color: AppColors.textSecondary),

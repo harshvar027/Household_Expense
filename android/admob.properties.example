@@ -2,5 +2,11 @@
 # Get IDs from https://admob.google.com → Apps → Household Expense
 appId=ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY
 
-# Also update lib/config/ad_config.dart banner unit IDs:
-# androidBannerId=ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ
+# Also update lib/config/ad_config.dart unit IDs:
+# androidBannerId=ca-app-pub-XXXXXXXXXXXXXXXX/BBBBBBBBBB   (bottom + menu inline)
+# iosBannerId=ca-app-pub-XXXXXXXXXXXXXXXX/CCCCCCCCCC
+# androidSideBannerId=ca-app-pub-XXXXXXXXXXXXXXXX/SSSSSSSSSS  (left/right rails)
+# iosSideBannerId=ca-app-pub-XXXXXXXXXXXXXXXX/TTTTTTTTTT
+#
+# No custom REST API keys are required for ads — only AdMob App ID + Ad unit IDs.
+# Optional later: Google UMP consent SDK for EEA/UK users.
