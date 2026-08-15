@@ -73,21 +73,15 @@ android {
                     )
                 }
                 signingConfig = signingConfigs.getByName("release")
+            } else {
+                // Sideload/website APK: sign with the debug keystore when no Play upload key exists.
+                signingConfig = signingConfigs.getByName("debug")
             }
         }
     }
 }
 
-// Fail only when a release task is actually requested (not during debug configure).
-gradle.taskGraph.whenReady {
-    val isReleaseTask = allTasks.any { it.name.contains("Release", ignoreCase = true) }
-    if (isReleaseTask && !hasReleaseKeystore) {
-        throw GradleException(
-            "Release build requires android/key.properties and upload keystore. " +
-                "Run: .\\scripts\\android-release-setup.ps1",
-        )
-    }
-}
+// Play Store upload still needs a real keystore. Website sideload uses the debug key.
 
 kotlin {
     compilerOptions {

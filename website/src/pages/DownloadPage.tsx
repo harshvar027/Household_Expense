@@ -2,7 +2,7 @@ import { Download } from 'lucide-react';
 import PageHero from '../components/PageHero';
 import { Magnetic } from '../components/motion';
 import InstallQr from '../components/InstallQr';
-import { APK_DOWNLOAD_URL } from '../lib/apk';
+import { apkDownloadUrl } from '../lib/apk';
 
 const FAQ = [
   {
@@ -15,7 +15,7 @@ const FAQ = [
   },
   {
     q: 'How do I install the Android APK?',
-    a: 'Tap Download APK, wait for the full file (it is large). On your phone, allow Install unknown apps for Chrome/Files, then open HouseholdExpense.apk. If Android says the package is invalid, you downloaded a webpage instead of the APK — use this page or the QR, not a shared HTML link.',
+    a: 'Tap Download APK and wait for the ~34 MB file. On your phone, allow Install unknown apps for Chrome/Files, then open HouseholdExpense.apk.',
   },
   {
     q: 'What is Pro?',
@@ -39,14 +39,15 @@ export default function DownloadPage() {
         <div>
           <Magnetic className="inline-flex">
             <a
-              href={APK_DOWNLOAD_URL}
+              href={apkDownloadUrl()}
+              download="HouseholdExpense.apk"
               className="he-btn-mint inline-flex items-center gap-3 rounded-full bg-mint px-8 py-4 text-lg font-bold text-on-mint shadow-[0_0_50px_rgba(46,230,166,0.3)]"
             >
               <Download className="h-5 w-5" /> Download APK
             </a>
           </Magnetic>
           <p className="mt-4 font-mono text-[11px] tracking-[0.18em] text-muted">
-            Package: com.householdexpense.app · v1.0.0 · showcase debug build
+            Package: com.householdexpense.app · v1.0.0 · ~34 MB · Android 64-bit
           </p>
 
           <div className="mt-10 max-w-xl space-y-3">

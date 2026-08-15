@@ -36,6 +36,7 @@ migrate_working_dir/
 # Build outputs (never commit — GitHub 100MB limit)
 **/build/
 *.apk
+!website/public/downloads/latest.apk
 *.aab
 *.ipa
 ios/Pods/
@@ -60,9 +61,3 @@ app.*.map.json
 /android/key.properties
 /android/*.jks
 /android/*.keystore
-
-# Website
-website/node_modules/
-website/dist/
-**/.DS_Store
-website/tsconfig.tsbuildinfo

@@ -1,3 +1,5 @@
-/** Public sideload APK. Hosted on GitHub Releases — Vercel cannot serve a 200MB+ package. */
-export const APK_DOWNLOAD_URL =
-  'https://github.com/harshvar027/Household_Expense/releases/latest/download/HouseholdExpense.apk';
+/** Same-origin APK so the private GitHub repo is never used for downloads. */
+export function apkDownloadUrl() {
+  if (typeof window === 'undefined') return '/downloads/latest.apk';
+  return `${window.location.origin}/downloads/latest.apk`;
+}

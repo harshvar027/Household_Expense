@@ -1,12 +1,10 @@
 # Android downloads
 
-- `latest.apk` — showcase debug build of Household Expense (`com.householdexpense.app`)
-- `version.json` — metadata
+`latest.apk` is the 64-bit release APK served from the website at `/downloads/latest.apk`.
 
-For a Play-signed release APK, create `android/key.properties` + upload keystore, then run:
+Rebuild:
 
 ```bash
-cd ..
-flutter build apk --release
-cp build/app/outputs/flutter-apk/app-release.apk website/public/downloads/latest.apk
+flutter build apk --release --split-per-abi --target-platform android-arm64
+cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk website/public/downloads/latest.apk
 ```

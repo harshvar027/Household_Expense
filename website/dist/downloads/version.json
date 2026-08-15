@@ -1,0 +1,8 @@
+{
+  "versionName": "1.0.0",
+  "versionCode": 1,
+  "buildType": "debug",
+  "package": "com.householdexpense.app",
+  "file": "latest.apk",
+  "note": "Sideload debug APK. Enable Install unknown apps for your browser, then open the file."
+}
