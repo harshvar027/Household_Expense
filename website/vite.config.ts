@@ -7,12 +7,16 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 const DEV_PORT = 5177;
 
 function lanOrigin(port: number) {
-  const nets = os.networkInterfaces();
-  for (const addrs of Object.values(nets)) {
-    for (const addr of addrs ?? []) {
-      const v4 = addr.family === 'IPv4' || addr.family === 4;
-      if (v4 && !addr.internal) return `http://${addr.address}:${port}`;
+  try {
+    const nets = os.networkInterfaces();
+    for (const addrs of Object.values(nets)) {
+      for (const addr of addrs ?? []) {
+        const v4 = addr.family === 'IPv4' || addr.family === 4;
+        if (v4 && !addr.internal) return `http://${addr.address}:${port}`;
+      }
     }
+  } catch {
+    // Restricted environments (Vercel build, sandboxes) cannot list interfaces.
   }
   return `http://localhost:${port}`;
 }
