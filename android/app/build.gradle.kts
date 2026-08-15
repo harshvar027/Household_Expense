@@ -60,12 +60,9 @@ android {
         }
         release {
             isDebuggable = false
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles("proguard-rules.pro")
-            // Only configure release signing when keystore exists.
-            // Keystore check runs in whenReady so debug builds are not blocked.
             if (hasReleaseKeystore) {
+                isMinifyEnabled = true
+                isShrinkResources = true
                 if (admobAppId == admobTestAppId) {
                     logger.warn(
                         "WARNING: AdMob is using Google's TEST app ID. " +
@@ -74,9 +71,12 @@ android {
                 }
                 signingConfig = signingConfigs.getByName("release")
             } else {
-                // Sideload/website APK: sign with the debug keystore when no Play upload key exists.
+                // Sideload APK: R8 minify was closing the app on launch. Keep plugins intact.
+                isMinifyEnabled = false
+                isShrinkResources = false
                 signingConfig = signingConfigs.getByName("debug")
             }
+            proguardFiles("proguard-rules.pro")
         }
     }
 }

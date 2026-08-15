@@ -15,7 +15,7 @@ const FAQ = [
   },
   {
     q: 'How do I install the Android APK?',
-    a: 'Tap Download APK and wait for the ~34 MB file. On your phone, allow Install unknown apps for Chrome/Files, then open HouseholdExpense.apk.',
+    a: 'Tap Download APK and wait for the ~94 MB file. Uninstall the previous Household Expense install first, then allow Install unknown apps and open the APK.',
   },
   {
     q: 'What is Pro?',
@@ -47,7 +47,7 @@ export default function DownloadPage() {
             </a>
           </Magnetic>
           <p className="mt-4 font-mono text-[11px] tracking-[0.18em] text-muted">
-            Package: com.householdexpense.app · v1.0.0 · ~34 MB · Android 64-bit
+            Package: com.householdexpense.app · v1.0.0 · ~94 MB · Android
           </p>
 
           <div className="mt-10 max-w-xl space-y-3">

@@ -17,6 +17,11 @@
 
 # SQLCipher
 -keep class net.sqlcipher.** { *; }
+-keep class org.sqlite.** { *; }
+
+# AdMob / Play services (R8 otherwise crashes at process start)
+-keep class com.google.android.gms.ads.** { *; }
+-keep class com.google.android.gms.common.** { *; }
 
 # Flutter secure storage / Android Keystore wrappers
 -keep class androidx.security.crypto.** { *; }

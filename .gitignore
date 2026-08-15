@@ -35,6 +35,8 @@ migrate_working_dir/
 
 # Build outputs (never commit — GitHub 100MB limit)
 **/build/
+website/dist/
+website/tsconfig.tsbuildinfo
 *.apk
 !website/public/downloads/latest.apk
 *.aab

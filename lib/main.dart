@@ -70,13 +70,20 @@ final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    debugPrint(details.exceptionAsString());
+  };
   if (!kIsWeb && Platform.isAndroid) {
     await applyWorkaroundToOpenSqlite3OnOldAndroidVersions();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   }
-  await PersonaService.instance.load();
+  try {
+    await PersonaService.instance.load();
+  } catch (e, st) {
+    debugPrint('PersonaService.load failed: $e\n$st');
+  }
   runApp(const ExpenseTrackerApp());
-  // Initialize ads after first frame — never block app launch.
   WidgetsBinding.instance.addPostFrameCallback((_) {
     unawaited(AdService.initialize());
   });
