@@ -27,7 +27,7 @@ export default function DownloadPage() {
   return (
     <div className="pb-20">
       <PageHero
-        index="05"
+        index="06"
         eyebrow="Download"
         title="Install Household Expense."
         subtitle="Scan the QR with your phone, or download the APK. Enable install from this source if Android asks."

@@ -20,6 +20,7 @@ class PremiumBottomNav extends StatelessWidget {
     (Icons.swap_horiz_rounded, Icons.swap_horiz_outlined, 'Txns'),
     (Icons.pie_chart_rounded, Icons.pie_chart_outline_rounded, 'Budgets'),
     (Icons.flag_rounded, Icons.flag_outlined, 'Goals'),
+    (Icons.newspaper_rounded, Icons.newspaper_outlined, 'News'),
     (Icons.grid_view_rounded, Icons.grid_view_outlined, 'Menu'),
   ];
 

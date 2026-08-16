@@ -6,7 +6,7 @@ export default function AboutPage() {
   return (
     <div className="pb-20">
       <PageHero
-        index="04"
+        index="05"
         eyebrow="About"
         title="Built for households that want control."
         subtitle="A Flutter vault for family spending — neo-glass UI, encrypted locally, with six months free then Pro."

@@ -461,6 +461,46 @@ html.he-cursor-on .he-cursor-ring {
   border-color: color-mix(in srgb, var(--color-mint) 45%, transparent);
 }
 
+.he-news-card {
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.35s ease;
+}
+
+.he-news-media img {
+  transform: scale(1.02);
+  transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.he-news-card:hover .he-news-media img {
+  transform: scale(1.08);
+}
+
+.he-news-fallback {
+  background:
+    radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--he-mint) 28%, transparent), transparent 46%),
+    radial-gradient(circle at 80% 70%, color-mix(in srgb, var(--he-amber) 22%, transparent), transparent 50%),
+    linear-gradient(135deg, var(--he-surface), var(--he-card));
+}
+
+.he-shimmer {
+  background: linear-gradient(
+    105deg,
+    var(--he-card) 20%,
+    color-mix(in srgb, var(--he-mint) 12%, var(--he-card)) 48%,
+    var(--he-card) 76%
+  );
+  background-size: 200% 100%;
+  animation: he-shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes he-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .he-marquee-track,
   .he-spin-slow,
@@ -468,8 +508,11 @@ html.he-cursor-on .he-cursor-ring {
   .he-scroll-line,
   .he-wash,
   .he-floor-grid,
-  .he-orb {
+  .he-orb,
+  .he-shimmer,
+  .he-news-media img {
     animation: none;
+    transition: none;
   }
 
   html.he-cursor-on .he-cursor-dot,

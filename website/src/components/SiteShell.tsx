@@ -28,7 +28,8 @@ const LINKS = [
   { to: '/product', label: 'Product', index: '01' },
   { to: '/privacy', label: 'Privacy', index: '02' },
   { to: '/pricing', label: 'Pricing', index: '03' },
-  { to: '/about', label: 'About', index: '04' },
+  { to: '/news', label: 'News', index: '04' },
+  { to: '/about', label: 'About', index: '05' },
 ];
 
 export default function SiteShell() {

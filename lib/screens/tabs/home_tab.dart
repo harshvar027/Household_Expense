@@ -11,6 +11,7 @@ import '../../widgets/ui/holographic_growth_chart.dart';
 import '../../widgets/ui/neo_glass.dart';
 import '../../widgets/ui/organic_donut_chart.dart';
 import '../../widgets/ui/pressable_scale.dart';
+import '../../widgets/economic_pulse_card.dart';
 import '../../services/insights_service.dart';
 import '../../models/recurring_transaction.dart';
 import '../../utils/responsive_layout.dart';
@@ -39,6 +40,7 @@ class HomeTab extends StatelessWidget {
   final VoidCallback onAddExpense;
   final VoidCallback onViewTransactions;
   final VoidCallback onViewAnalytics;
+  final VoidCallback onViewNews;
   final VoidCallback? onAccountSettings;
   final VoidCallback? onManageSettings;
   final VoidCallback? onLogout;
@@ -71,6 +73,7 @@ class HomeTab extends StatelessWidget {
     required this.onAddExpense,
     required this.onViewTransactions,
     required this.onViewAnalytics,
+    required this.onViewNews,
     this.onAccountSettings,
     this.onManageSettings,
     this.onLogout,
@@ -220,6 +223,8 @@ class HomeTab extends StatelessWidget {
                   _InsightPreview(insight: insights.first),
                   const SizedBox(height: 16),
                 ],
+                EconomicPulseCard(onOpenNews: onViewNews),
+                const SizedBox(height: 16),
                 _QuickActions(
                   onAddExpense: onAddExpense,
                   onViewTransactions: onViewTransactions,

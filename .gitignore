@@ -58,6 +58,12 @@ app.*.map.json
 /android/app/release
 /android/app/build/
 /android/build/
+# Secrets
+.env
+website/.env
+website/node_modules/
+lib/config/finnhub_local.dart
+
 # AdMob / signing (never commit real values)
 /android/admob.properties
 /android/key.properties

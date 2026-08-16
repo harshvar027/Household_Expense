@@ -108,6 +108,7 @@ class MenuTab extends StatelessWidget {
                   adAfter: true,
                   items: const [
                     _Item(Icons.insights_rounded, 'Analytics', 'Charts & insights', AppColors.balance, 'analytics', null),
+                    _Item(Icons.newspaper_rounded, 'Market news', 'Economic changes', AppColors.savings, 'news', null),
                     _Item(Icons.label_rounded, 'Categories', 'Spending tags', AppColors.primary, 'categories', null),
                     _Item(Icons.flag_rounded, 'Goals', 'Savings targets', AppColors.income, 'goals', null),
                     _Item(Icons.tune_rounded, 'Household', 'Members & accounts', AppColors.primaryDark, 'settings', null),
@@ -116,7 +117,7 @@ class MenuTab extends StatelessWidget {
                 const SizedBox(height: 16),
                 _buildSection(
                   label: 'Data & Export',
-                  startIndex: 8,
+                  startIndex: 9,
                   adAfter: true,
                   items: const [
                     _Item(Icons.picture_as_pdf_rounded, 'PDF Report', 'Monthly summary', Color(0xFFE53935), 'pdf', AppFeature.exportPdf),
@@ -136,7 +137,7 @@ class MenuTab extends StatelessWidget {
                 const SizedBox(height: 16),
                 _buildSection(
                   label: 'Support',
-                  startIndex: 13,
+                  startIndex: 14,
                   items: const [
                     _Item(Icons.help_outline_rounded, 'Help & About', 'Tips, feedback & app info', AppColors.balance, 'help', null),
                     _Item(Icons.feedback_outlined, 'Send feedback', 'Bug reports & ideas', AppColors.primary, 'feedback', null),

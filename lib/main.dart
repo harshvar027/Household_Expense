@@ -29,6 +29,7 @@ import 'screens/tabs/analytics_tab.dart';
 import 'screens/tabs/menu_tab.dart';
 import 'screens/tabs/budgets_tab.dart';
 import 'screens/tabs/goals_tab.dart';
+import 'screens/tabs/news_tab.dart';
 import 'screens/transactions/add_transaction_hub.dart';
 import 'theme/app_theme.dart';
 import 'theme/neo_palette.dart';
@@ -1454,6 +1455,14 @@ class _ExpenseScreenState extends State<ExpenseScreen> with WidgetsBindingObserv
           curve: Curves.easeOutCubic,
         );
         return;
+      case 'news':
+        setState(() => _currentTab = 4);
+        _pageController.animateToPage(
+          4,
+          duration: const Duration(milliseconds: 380),
+          curve: Curves.easeOutCubic,
+        );
+        return;
       case 'settings':
         await _openSettings();
         return;
@@ -1687,11 +1696,11 @@ class _ExpenseScreenState extends State<ExpenseScreen> with WidgetsBindingObserv
 
     final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
     final isPremium = entitlement?.hasActivePremium ?? false;
-    // Hide ads on Menu tab (index 4)
-    final showBottomBanner = !keyboardOpen && _currentTab != 4 && !isPremium;
-    final showMenuAds = !isPremium && _currentTab == 4;
+    // Hide ads on Menu tab (index 5)
+    final showBottomBanner = !keyboardOpen && _currentTab != 5 && !isPremium;
+    final showMenuAds = !isPremium && _currentTab == 5;
     final showSideAds = !isPremium &&
-        _currentTab != 4 &&
+        _currentTab != 5 &&
         !keyboardOpen &&
         SideAdRail.shouldShow(context);
     final fabBottom = ResponsiveLayout.fabBottomOffset(
@@ -1713,6 +1722,10 @@ class _ExpenseScreenState extends State<ExpenseScreen> with WidgetsBindingObserv
       showBottomAd: showBottomBanner,
     );
     final goalsScrollBottom = ResponsiveLayout.scrollBottomPadding(
+      context,
+      showBottomAd: showBottomBanner,
+    );
+    final newsScrollBottom = ResponsiveLayout.scrollBottomPadding(
       context,
       showBottomAd: showBottomBanner,
     );
@@ -1816,6 +1829,14 @@ class _ExpenseScreenState extends State<ExpenseScreen> with WidgetsBindingObserv
                                 );
                               },
                               onViewAnalytics: _openAnalyticsSheet,
+                              onViewNews: () {
+                                setState(() => _currentTab = 4);
+                                _pageController.animateToPage(
+                                  4,
+                                  duration: const Duration(milliseconds: 380),
+                                  curve: Curves.easeOutCubic,
+                                );
+                              },
                               onAccountSettings: _openAccountSecurity,
                               onManageSettings: _openSettings,
                               onLogout: _confirmLogout,
@@ -1860,6 +1881,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> with WidgetsBindingObserv
                               onManage: _openSettings,
                               bottomScrollPadding: goalsScrollBottom,
                             ),
+                            NewsTab(bottomScrollPadding: newsScrollBottom),
                             MenuTab(
                               onAction: _handleMenuAction,
                               adsActive: showMenuAds,

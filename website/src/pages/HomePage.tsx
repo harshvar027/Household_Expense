@@ -7,6 +7,7 @@ import { CountUp, Magnetic } from '../components/motion';
 import { prefersReducedMotion } from '../lib/motion';
 import Logo from '../components/Logo';
 import InstallQr from '../components/InstallQr';
+import HomeNewsStrip from '../components/HomeNewsStrip';
 
 const HeroScene = lazy(() => import('./HeroScene'));
 
@@ -24,6 +25,7 @@ const MARQUEE = [
   'No cloud ledger',
   '₹100 / month',
   '₹600 / year',
+  'Market news',
 ];
 
 const FEATURES = [
@@ -259,6 +261,8 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+
+      <HomeNewsStrip />
 
       <section className="mx-auto max-w-6xl px-4 py-24 md:py-32">
         <div className="reveal flex items-end justify-between gap-6">

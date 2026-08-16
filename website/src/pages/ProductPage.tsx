@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Fingerprint, Lock, PieChart, Target, Upload, Users } from 'lucide-react';
+import { Fingerprint, Lock, Newspaper, PieChart, Target, Upload, Users } from 'lucide-react';
 import PageHero from '../components/PageHero';
 import { Magnetic } from '../components/motion';
 
@@ -28,6 +28,11 @@ const FEATURES = [
     icon: Users,
     title: 'Built for the household',
     body: 'Members, accounts, and shared visibility — without shipping data to a third party.',
+  },
+  {
+    icon: Newspaper,
+    title: 'Economic news wire',
+    body: 'Finnhub headlines for rates, inflation, oil, and gold — formatted so a household can see what just moved.',
   },
   {
     icon: Fingerprint,
