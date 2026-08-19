@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ShieldCheck, Smartphone, Wallet } from 'lucide-react';
 import PageHero from '../components/PageHero';
+import AdSlot from '../components/AdSlot';
 
 export default function PrivacyPage() {
   return (
@@ -20,6 +21,7 @@ export default function PrivacyPage() {
               'Background lock with PIN / biometrics',
               'User-initiated encrypted backups only',
               'No cloud account required to track spending',
+              'This marketing site may show Google ads — the household ledger still never leaves the phone',
             ].map((t) => (
               <li key={t} className="flex items-start gap-3 border-b border-line pb-4">
                 <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-mint" />
@@ -27,6 +29,9 @@ export default function PrivacyPage() {
               </li>
             ))}
           </ul>
+          <div className="mt-8">
+            <AdSlot format="inline" />
+          </div>
           <Link to="/download" className="he-link-line mt-8 inline-flex text-sm font-semibold text-mint">
             Get the private app →
           </Link>

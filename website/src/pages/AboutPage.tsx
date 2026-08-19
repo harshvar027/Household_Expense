@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import PageHero from '../components/PageHero';
+import AdSlot from '../components/AdSlot';
 import { Magnetic } from '../components/motion';
 
 export default function AboutPage() {
@@ -11,6 +12,10 @@ export default function AboutPage() {
         title="Built for households that want control."
         subtitle="A Flutter vault for family spending — neo-glass UI, encrypted locally, with six months free then Pro."
       />
+
+      <div className="mx-auto mb-8 max-w-6xl px-4 md:max-w-3xl">
+        <AdSlot format="inline" />
+      </div>
 
       <div className="mx-auto max-w-6xl space-y-6 px-4 text-muted leading-relaxed md:max-w-3xl md:text-lg">
         <p>

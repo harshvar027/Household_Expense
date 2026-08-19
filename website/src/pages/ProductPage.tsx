@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Fingerprint, Lock, Newspaper, PieChart, Target, Upload, Users } from 'lucide-react';
 import PageHero from '../components/PageHero';
+import AdSlot from '../components/AdSlot';
 import { Magnetic } from '../components/motion';
 
 const FEATURES = [
@@ -50,6 +51,10 @@ export default function ProductPage() {
         title="Everything a household needs. Nothing it must sync."
         subtitle="Capture spending five ways, plan budgets and goals, and keep Pro monetization honest — while the vault stays on-device."
       />
+
+      <div className="mx-auto mb-8 max-w-6xl px-4">
+        <AdSlot format="banner" />
+      </div>
 
       <div className="mx-auto grid max-w-6xl gap-4 px-4 sm:grid-cols-2 lg:grid-cols-3">
         {FEATURES.map((f, i) => (

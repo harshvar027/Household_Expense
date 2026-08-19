@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ArrowUpRight, Newspaper } from 'lucide-react';
 import PageHero from '../components/PageHero';
+import AdSlot from '../components/AdSlot';
 import { Magnetic } from '../components/motion';
 import { prefersReducedMotion } from '../lib/motion';
 import {
@@ -101,7 +102,11 @@ export default function NewsPage() {
         </div>
       ) : null}
 
-      <div className="mx-auto max-w-6xl px-4">
+      <div className="mx-auto flex max-w-6xl gap-5 px-4">
+        <div className="he-ad-rail pt-2">
+          <AdSlot format="rectangle" />
+        </div>
+        <div className="min-w-0 flex-1">
         {bundle?.quotes.length ? (
           <div className="news-reveal mb-8 grid grid-cols-2 gap-3 md:grid-cols-4">
             {bundle.quotes.map((quote) => {
@@ -158,9 +163,19 @@ export default function NewsPage() {
         {!loading && !error && featured ? (
           <>
             <FeaturedCard article={featured} />
+            <div className="mt-6">
+              <AdSlot format="inline" />
+            </div>
             <div className="mt-6 grid gap-4 md:grid-cols-2">
               {rest.map((article, index) => (
-                <StoryCard key={`${article.id}-${article.url}`} article={article} index={index} />
+                <span key={`${article.id}-${article.url}`} className="contents">
+                  <StoryCard article={article} index={index} />
+                  {index === 3 ? (
+                    <div className="md:col-span-2">
+                      <AdSlot format="rectangle" />
+                    </div>
+                  ) : null}
+                </span>
               ))}
             </div>
           </>
@@ -172,6 +187,10 @@ export default function NewsPage() {
             <p className="mt-2 text-muted">Try another filter. The wire refreshes throughout the day.</p>
           </div>
         ) : null}
+        </div>
+        <div className="he-ad-rail pt-2">
+          <AdSlot format="rectangle" />
+        </div>
       </div>
     </div>
   );

@@ -55,6 +55,37 @@ function marketNewsApi() {
   };
 }
 
+function adsTxt(client: string) {
+  const pub = client.replace(/^ca-/, '').trim();
+  const body = /^pub-\d+$/.test(pub)
+    ? `google.com, ${pub}, DIRECT, f08c47fec0942fa0\n`
+    : '# Add VITE_ADSENSE_CLIENT=ca-pub-XXXXXXXX on Vercel to emit a live ads.txt\n';
+
+  return {
+    name: 'ads-txt',
+    configureServer(server: {
+      middlewares: { use: (fn: (req: IncomingMessage, res: ServerResponse, next: () => void) => void) => void };
+    }) {
+      server.middlewares.use((req, res, next) => {
+        if ((req.url?.split('?')[0] ?? '') !== '/ads.txt') {
+          next();
+          return;
+        }
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.end(body);
+      });
+    },
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'ads.txt', source: body });
+    },
+    transformIndexHtml(html: string) {
+      if (!/^ca-pub-\d+$/.test(client.trim())) return html;
+      const tag = `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${client.trim()}" crossorigin="anonymous"></script>`;
+      return html.replace('</head>', `    ${tag}\n  </head>`);
+    },
+  };
+}
+
 function apkHeaders() {
   return {
     name: 'apk-headers',
@@ -81,7 +112,13 @@ export default defineConfig(({ mode }) => {
     define: {
       __INSTALL_ORIGIN__: JSON.stringify(lanOrigin(DEV_PORT)),
     },
-    plugins: [react(), tailwindcss(), apkHeaders(), marketNewsApi()],
+    plugins: [
+      react(),
+      tailwindcss(),
+      apkHeaders(),
+      marketNewsApi(),
+      adsTxt(env.VITE_ADSENSE_CLIENT ?? ''),
+    ],
     server: { port: DEV_PORT, host: true },
   };
 });

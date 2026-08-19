@@ -1,5 +1,6 @@
 import { Download } from 'lucide-react';
 import PageHero from '../components/PageHero';
+import AdSlot from '../components/AdSlot';
 import { Magnetic } from '../components/motion';
 import InstallQr from '../components/InstallQr';
 import { apkDownloadUrl } from '../lib/apk';
@@ -49,6 +50,10 @@ export default function DownloadPage() {
           <p className="mt-4 font-mono text-[11px] tracking-[0.18em] text-muted">
             Package: com.householdexpense.app · v1.0.0 · ~94 MB · Android
           </p>
+
+          <div className="mt-8 max-w-xl">
+            <AdSlot format="inline" />
+          </div>
 
           <div className="mt-10 max-w-xl space-y-3">
             {FAQ.map((item) => (

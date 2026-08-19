@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Check } from 'lucide-react';
 import PageHero from '../components/PageHero';
+import AdSlot from '../components/AdSlot';
 import { Magnetic } from '../components/motion';
 
 const PLANS = [
@@ -41,6 +42,10 @@ export default function PricingPage() {
         title="Six months free. Then ₹100 a month — or ₹600 a year."
         subtitle="Full access from registration. After the trial, pick monthly or yearly Pro. Ads drop away on either paid plan."
       />
+
+      <div className="mx-auto mb-8 max-w-6xl px-4">
+        <AdSlot format="banner" />
+      </div>
 
       <div className="mx-auto grid max-w-6xl gap-4 px-4 md:grid-cols-3">
         {PLANS.map((plan) => (

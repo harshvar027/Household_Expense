@@ -14,5 +14,5 @@
       ]
     }
   ],
-  "rewrites": [{ "source": "/((?!downloads/|api/).*)", "destination": "/index.html" }]
+  "rewrites": [{ "source": "/((?!downloads/|api/|ads\\.txt).*)", "destination": "/index.html" }]
 }

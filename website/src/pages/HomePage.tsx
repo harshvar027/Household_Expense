@@ -8,6 +8,7 @@ import { prefersReducedMotion } from '../lib/motion';
 import Logo from '../components/Logo';
 import InstallQr from '../components/InstallQr';
 import HomeNewsStrip from '../components/HomeNewsStrip';
+import AdSlot from '../components/AdSlot';
 
 const HeroScene = lazy(() => import('./HeroScene'));
 
@@ -199,6 +200,10 @@ export default function HomePage() {
         </div>
       </div>
 
+      <div className="mx-auto max-w-6xl px-4 py-8">
+        <AdSlot format="banner" />
+      </div>
+
       <section className="mx-auto max-w-6xl px-4 py-24 md:py-32">
         <div className="reveal grid gap-10 md:grid-cols-[1fr_1.2fr] md:items-end">
           <p className="font-mono text-[11px] uppercase tracking-[0.32em] text-mint">Manifesto</p>
@@ -261,6 +266,10 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+
+      <div className="mx-auto max-w-6xl px-4 py-6">
+        <AdSlot format="inline" />
+      </div>
 
       <HomeNewsStrip />
 

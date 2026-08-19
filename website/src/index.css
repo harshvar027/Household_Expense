@@ -461,6 +461,76 @@ html.he-cursor-on .he-cursor-ring {
   border-color: color-mix(in srgb, var(--color-mint) 45%, transparent);
 }
 
+.he-ad {
+  width: 100%;
+}
+
+.he-ad-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--he-muted);
+}
+
+.he-ad-frame {
+  overflow: hidden;
+  border-radius: 1.15rem;
+  border: 1px solid var(--he-glass-border);
+  background: linear-gradient(135deg, var(--he-glass-a), var(--he-glass-b));
+  backdrop-filter: blur(16px);
+}
+
+.he-ad-placeholder {
+  display: flex;
+  min-height: inherit;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 18px;
+  text-align: center;
+}
+
+.he-ad-placeholder-mark {
+  height: 6px;
+  width: 6px;
+  border-radius: 999px;
+  background: var(--he-mint);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--he-mint) 70%, transparent);
+}
+
+.he-ad-placeholder p {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--he-muted);
+}
+
+.he-ad-placeholder p + p {
+  letter-spacing: 0.08em;
+  text-transform: none;
+  opacity: 0.75;
+}
+
+.he-ad-rail {
+  display: none;
+}
+
+@media (min-width: 1280px) {
+  .he-ad-rail {
+    display: block;
+    width: 160px;
+    flex-shrink: 0;
+  }
+}
+
 .he-news-card {
   transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.35s ease;
 }

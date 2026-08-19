@@ -18,6 +18,6 @@
     }
   ],
   "rewrites": [
-    { "source": "/((?!downloads/|api/).*)", "destination": "/index.html" }
+    { "source": "/((?!downloads/|api/|ads\\.txt).*)", "destination": "/index.html" }
   ]
 }

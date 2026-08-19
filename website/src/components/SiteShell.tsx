@@ -8,6 +8,8 @@ import { useTheme } from '../context/ThemeContext';
 import { Cursor, Magnetic, Preloader } from './motion';
 import { hasBooted, prefersReducedMotion } from '../lib/motion';
 import Logo from './Logo';
+import AdScript from './AdScript';
+import AdSlot from './AdSlot';
 
 const BackgroundField = lazy(() => import('./BackgroundField'));
 
@@ -155,6 +157,7 @@ export default function SiteShell() {
 
   return (
     <div className="relative min-h-screen bg-page text-ink">
+      <AdScript />
       {showLoader ? <Preloader onDone={onLoaderDone} /> : null}
       <Cursor />
       <div className="he-wash" aria-hidden />
@@ -274,6 +277,9 @@ export default function SiteShell() {
 
       <main className="relative z-10 pt-[4.75rem]">
         <Outlet />
+        <div className="mx-auto mt-6 max-w-6xl px-4 pb-4">
+          <AdSlot format="banner" />
+        </div>
       </main>
 
       <footer className="relative z-10 overflow-hidden border-t border-line">
